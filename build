@@ -1,0 +1,5 @@
+rm xserver
+clear
+gcc core.c server.c log.c hardware.c main.c -o xserver -lpthread -lwiringPi
+chmod +777 -R ../server/
+./xserver
