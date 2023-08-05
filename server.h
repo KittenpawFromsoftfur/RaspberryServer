@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "core.h"
+#include "log.h"
 
 // server
 #define CSERVER_NET_IP "127.0.0.1"
@@ -29,7 +30,7 @@
 #define CSERVER_DELAY_RECEIVE 10000
 #define CSERVER_DELAY_UPDATELOOP 1000000
 
-#define CSERVER_TIMEOUT_CLIENTCONNECTION_READ 5// s
+#define CSERVER_TIMEOUT_CLIENTCONNECTION_READ 5 // s
 
 #define CSERVER_MAX_LEN_TOKEN 256
 #define CSERVER_MAX_TOKENS 10
@@ -51,19 +52,19 @@
 
 #define CSERVER_COMFLAG_EXEC_LOGGEDIN (1 << 0)
 #define CSERVER_COMFLAG_EXEC_LOGGEDOUT (1 << 1)
-#define CSERVER_COMFLAG_EXEC_ACTIVATEDONLY (1 << 2)// overwrites logged in / out. Incorrect parameters treat as unknown.
+#define CSERVER_COMFLAG_EXEC_ACTIVATEDONLY (1 << 2) // overwrites logged in / out. Incorrect parameters treat as unknown.
 #define CSERVER_COMFLAG_VISI_LOGGEDIN (1 << 3)
 #define CSERVER_COMFLAG_VISI_LOGGEDOUT (1 << 4)
-#define CSERVER_COMFLAG_VISI_ACTIVATEDONLY (1 << 5)// overwrites logged in / out. Incorrect parameters treat as unknown.
+#define CSERVER_COMFLAG_VISI_ACTIVATEDONLY (1 << 5) // overwrites logged in / out. Incorrect parameters treat as unknown.
 
 #define CSERVER_RESPONSE_LOGIN_FAILED "Wrong username or password"
 #define CSERVER_MAX_BANNED_IPS 100
 #define CSERVER_MAX_FAILED_LOGINS 3
 #define CSERVER_IP_BAN_DURATION_FAILEDLOGINS TIME_TO_SECONDS_HMS(0, 5, 0)
 #define CSERVER_MAX_SUSPICIOUS_IPS MAX_BANNED_IPS
-#define CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS (CSERVER_MAX_FAILED_LOGINS * 2)// Prevents abuse of failed login counter reset when reconnecting. Forgives clumsiness but also bans abusers harder.
+#define CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS (CSERVER_MAX_FAILED_LOGINS * 2) // Prevents abuse of failed login counter reset when reconnecting. Forgives clumsiness but also bans abusers harder.
 #define CSERVER_IP_BAN_DURATION_SUSPICIOUS TIME_TO_SECONDS_HMS(0, 30, 0)
-#define CSERVER_SUSPICIOUS_FALLOFF_TIME TIME_TO_SECONDS_HMS(0, 30, 0)// Is also reset when a ban ends or a login with an activated account succeeds
+#define CSERVER_SUSPICIOUS_FALLOFF_TIME TIME_TO_SECONDS_HMS(0, 30, 0) // Is also reset when a ban ends or a login with an activated account succeeds
 
 // command specific
 #define CSERVER_COM_GPIO_RANGE "0 - 7, 10 - 16, 21 - 31"
@@ -85,30 +86,30 @@ typedef enum
 	COM_SHUTDOWN,
 	COM_RUN,
 	COM_DELETE,
-	COM_DEFINE,
+	COM_DEFINE_GPIO,
 	COM_SET,
 	COM_CLEAR,
-	COM_MOSDEFINE,
+	COM_DEFINE_MOSFET,
 	COM_MOSSET,
 	COM_MOSREAD,
 	COM_MOSCLEAR,
 	COM_ECHO,
 	COM_EXIT,
-}E_COMMANDS;
+} E_COMMANDS;
 
 typedef enum
 {
 	ACCACTION_REGISTER,
 	ACCACTION_LOGIN,
 	ACCACTION_LOGOUT,
-}E_ACCOUNTACTIONS;
+} E_ACCOUNTACTIONS;
 
 typedef enum
 {
 	ACCKEY_USERNAME,
 	ACCKEY_PASSWORD,
 	ACCKEY_ACTIVATED,
-}E_ACCOUNTKEYS;
+} E_ACCOUNTKEYS;
 
 typedef enum
 {
@@ -116,14 +117,14 @@ typedef enum
 	FILETYPE_DEFINES_GPIO,
 	FILETYPE_DEFINES_MOSFET,
 	FILETYPE_LOG,
-}E_FILETYPES;
+} E_FILETYPES;
 
 // structs
 typedef struct
 {
 	int sockfd;
 	int slotIndex;
-}S_PARAMS_CLIENTCONNECTION;
+} S_PARAMS_CLIENTCONNECTION;
 
 typedef struct
 {
@@ -133,7 +134,7 @@ typedef struct
 	char aParams[CSERVER_MAX_LEN_COMPARAMS];
 	char aExample[CSERVER_MAX_LEN_COMEXAMPLE];
 	int flags;
-}S_COMMAND;
+} S_COMMAND;
 
 typedef struct
 {
@@ -147,7 +148,7 @@ typedef struct
 	int failedLogins;
 	int requestedDisconnect;
 	int banned;
-}S_SLOTINFO;
+} S_SLOTINFO;
 
 typedef struct
 {
@@ -159,11 +160,12 @@ typedef struct
 	in_addr_t aSuspiciousIPs[CSERVER_MAX_SUSPICIOUS_IPS];
 	int aSuspiciousAttempts[CSERVER_MAX_SUSPICIOUS_IPS];
 	time_t aSuspiciousStartTime[CSERVER_MAX_SUSPICIOUS_IPS];
-}S_SERVERINFO;
+} S_SERVERINFO;
 
 class CServer
 {
 public:
+	CServer(CLog *pcLog);
 	void *ThrfRun(void *pArgs);
 	void *ThrfOnExitApplication(void *pArgs);
 
@@ -174,7 +176,6 @@ private:
 	void EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX_TOKENS][MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
 	int IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags);
 	int IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags);
-	int MosfetClear();
 	int ResetHardware();
 	void MakeFilepath(E_FILETYPES FileType, const char *pUsername, int FilenameOnly, char *pFullpath, size_t LenFullpath);
 	int AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPyword, int *pWrongCredentials, char *pError, size_t LenError);
@@ -191,4 +192,7 @@ private:
 	void RemoveSuspiciousIP(in_addr_t IP);
 	int GetSuspiciousAttempts(in_addr_t IP);
 	struct in_addr GetIPStruct(in_addr_t IP);
+
+	CLog *m_pcLog;
+	CHardware m_cHardware;
 };

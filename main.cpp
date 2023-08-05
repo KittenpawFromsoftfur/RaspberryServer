@@ -13,9 +13,12 @@
 		split main and cmain (rename)
 		Use common coding conventions (Enums, Namespaces, server::mosfet_clear belongs to hardware, etc...)
 		strlen --> strnlen usw...
+		Knowledge: c++ what if source is made into library but header file contains data that the source file depends on
+		header die nicht gebraucht werden löschen
 		username-independend paths
 		Check if something can be made smarter... (core?)
-		Clean up everything
+		Clean up everything / Code formatter { 0 }
+		Test every single function again
 
 	GPIO
 		set pinmode
@@ -33,7 +36,7 @@
 */
 
 // global variables
-S_MAIN gsMain = { 0 };
+S_MAIN gsMain = {0};
 
 // private functions
 void *main_ThrfKeyboardcontrol(void *pArgs);
@@ -42,13 +45,13 @@ int main_ExitApplication();
 int main()
 {
 	int retval = 0;
-	struct sigaction sigAction = { 0 };
+	struct sigaction sigAction = {0};
 	int hasError = false;
 	int i = 0;
-	void *(*pFunc)(void*) = 0;
+	void *(*pFunc)(void *) = 0;
 
 	// create log folder path
-	retval = Mkdir(FOLDERPATH_LOG);// -------------- TODO will this work?
+	retval = Mkdir(FOLDERPATH_LOG); // -------------- TODO will this work?
 	if (retval != OK)
 	{
 		printf("%s: Failed to make folder \"%s\"\n", FOLDERPATH_LOG);
@@ -70,10 +73,12 @@ int main()
 	}
 
 	// run server and keybordcontrol thread
-	for(i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
+	CServer cServer(&cLog);
+
+	for (i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
 	{
 		if (i == 0)
-			pFunc = server_ThrfRun;
+			pFunc = cServer.ThrfRun;
 		else if (i == 1)
 			pFunc = main_ThrfKeyboardcontrol;
 
@@ -81,20 +86,20 @@ int main()
 		retval = pthread_create(&gsMain.aThread[i], NULL, pFunc, NULL);
 		if (retval != 0)
 		{
-			Log("%s: Failed to create thread %d", __FUNCTION__, i);
+			cLog.Log("%s: Failed to create thread %d", __FUNCTION__, i);
 			return ERROR;
 		}
 	}
 
 	// main loop
-	while(1)
+	while (1)
 	{
 		// check thread status
-		for(i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
+		for (i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
 		{
 			if (gsMain.aThreadStatus[i] != OK)
 			{
-				Log("%s: There was an error in thread %d, ending...", __FUNCTION__, i);
+				cLog.Log("%s: There was an error in thread %d, ending...", __FUNCTION__, i);
 				hasError = true;
 				break;
 			}
@@ -103,7 +108,7 @@ int main()
 		// check if application should exit
 		if (hasError || gsMain.exitApplication)
 		{
-			Log("Exiting application...");
+			cLog.Log("Exiting application...");
 
 			retval = main_ExitApplication();
 			if (retval != OK)
@@ -117,7 +122,7 @@ int main()
 		usleep(DELAY_MAINLOOP);
 	}
 
-	Log("Application end");
+	cLog.Log("Application end");
 
 	if (hasError)
 		return ERROR;
@@ -129,7 +134,7 @@ void *main_ThrfKeyboardcontrol(void *pArgs)
 {
 	char ch = 0;
 
-	while(1)
+	while (1)
 	{
 		// keyboard input
 		ch = getchar();
@@ -140,7 +145,7 @@ void *main_ThrfKeyboardcontrol(void *pArgs)
 		usleep(DELAY_KEYBOARDCONTROLLOOP);
 	}
 
-	return (void*)OK;
+	return (void *)OK;
 }
 
 int main_ExitApplication()
@@ -154,22 +159,22 @@ int main_ExitApplication()
 	retval = pthread_create(&thrServerExitApp, NULL, server_ThrfOnExitApplication, NULL);
 	if (retval != 0)
 	{
-		Log("%s: Failed to create thread for exiting server applications", __FUNCTION__, i);
+		cLog.Log("%s: Failed to create thread for exiting server applications", __FUNCTION__, i);
 		hasError = true;
 	}
 
 	// join thread and wait for finish
-	pthread_join(thrServerExitApp, (void**)&retval);
+	pthread_join(thrServerExitApp, (void **)&retval);
 	if (retval != OK)
 		hasError = true;
 
 	// cancel main threads
-	for(i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
+	for (i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
 	{
 		retval = pthread_cancel(gsMain.aThread[i]);
 		if (retval != 0)
 		{
-			Log("%s: There was an error cancelling thread %d", __FUNCTION__, i);
+			cLog.Log("%s: There was an error cancelling thread %d", __FUNCTION__, i);
 			hasError = true;
 		}
 	}

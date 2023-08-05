@@ -1,4 +1,5 @@
 #include <wiringPi.h>
+#include <stdlib.h>
 
 #include "core.h"
 #include "log.h"
@@ -26,12 +27,12 @@ void CHardware::Init()
 	}
 }
 
-void CHardware::Set(int Pin, int State)
+void CHardware::SetGpio(int Pin, int State)
 {
 	digitalWrite(Pin, State);
 }
 
-void CHardware::Clear()
+void CHardware::ClearGpio()
 {
 	int i = 0;
 
@@ -44,6 +45,33 @@ void CHardware::Clear()
 
 		Set(i, LOW);
 	}
+}
+
+int CHardware::SetMosfet(int Pin, int State)
+{
+	int retval = 0;
+	char aSystemString[CHARDWARE_MAX_LEN_SYSTEMCOMMAND] = { 0 };
+
+	snprintf(aSystemString, ARRAYSIZE(aSystemString), "8mosind 0 write %d %s", Pin, State == 1 ? "on" : "off");
+
+	retval = system(aSystemString);
+
+	if (retval != 0)
+		return ERROR;
+
+	return OK;
+}
+
+int CHardware::ClearMosfet()
+{
+	int retval = 0;
+
+	retval = system("8mosind 0 write 0");
+
+	if (retval != 0)
+		return ERROR;
+
+	return OK;
 }
 
 bool CHardware::IsGpioValid(int Number)
