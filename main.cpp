@@ -7,13 +7,29 @@
 #include "main.h"
 
 /* TODO
+	GENERAL
+		Constructor has to initialize all members to zero!
+		Port to C++ and modularize completely
+		split main and cmain (rename)
+		Use common coding conventions (Enums, Namespaces, server::mosfet_clear belongs to hardware, etc...)
+		strlen --> strnlen usw...
+		username-independend paths
+		Check if something can be made smarter... (core?)
+		Clean up everything
+
 	GPIO
 		set pinmode
 		read pin
 		set/read multiple pins at once
-		
+
 	MOSFET
 		Implement function "mosread"
+
+	INTERFACE
+		Make it so you can connect with a browser and click on buttons instead of sending commands
+
+	END
+		Documentation please!
 */
 
 // global variables
@@ -29,23 +45,21 @@ int main()
 	struct sigaction sigAction = { 0 };
 	int hasError = false;
 	int i = 0;
-	void *pFunc = 0;
-	
+	void *(*pFunc)(void*) = 0;
+
 	// create log folder path
-	retval = core_Mkdir(FOLDERPATH_LOG);
+	retval = Mkdir(FOLDERPATH_LOG);// -------------- TODO will this work?
 	if (retval != OK)
 	{
 		printf("%s: Failed to make folder \"%s\"\n", FOLDERPATH_LOG);
 		return ERROR;
 	}
-	
+
 	snprintf(gsMain.aFilepathLog, ARRAYSIZE(gsMain.aFilepathLog), "%s/%s", FOLDERPATH_LOG, LOG_NAME);
-	
+
 	// initialize log
-	retval = log_Init(gsMain.aFilepathLog);
-	if (retval != OK)
-		return ERROR;
-		
+	CLog cLog(gsMain.aFilepathLog);
+
 	// make process ignore SIGPIPE signal, so it will not exit when writing to disconnected socket
 	sigAction.sa_handler = SIG_IGN;
 	retval = sigaction(SIGPIPE, &sigAction, NULL);
@@ -54,7 +68,7 @@ int main()
 		Log("%s: Failed to ignore the SIGPIPE signal", __FUNCTION__);
 		return ERROR;
 	}
-	
+
 	// run server and keybordcontrol thread
 	for(i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
 	{
@@ -62,7 +76,7 @@ int main()
 			pFunc = server_ThrfRun;
 		else if (i == 1)
 			pFunc = main_ThrfKeyboardcontrol;
-		
+
 		gsMain.aThreadStatus[i] = OK;
 		retval = pthread_create(&gsMain.aThread[i], NULL, pFunc, NULL);
 		if (retval != 0)
@@ -71,7 +85,7 @@ int main()
 			return ERROR;
 		}
 	}
-	
+
 	// main loop
 	while(1)
 	{
@@ -85,44 +99,44 @@ int main()
 				break;
 			}
 		}
-		
+
 		// check if application should exit
 		if (hasError || gsMain.exitApplication)
 		{
 			Log("Exiting application...");
-			
+
 			retval = main_ExitApplication();
 			if (retval != OK)
 				return ERROR;
-			
+
 			break;
-			
+
 			break;
 		}
-		
+
 		usleep(DELAY_MAINLOOP);
 	}
-	
+
 	Log("Application end");
-	
+
 	if (hasError)
 		return ERROR;
-	
+
 	return OK;
 }
 
 void *main_ThrfKeyboardcontrol(void *pArgs)
 {
 	char ch = 0;
-	
+
 	while(1)
-	{	
+	{
 		// keyboard input
 		ch = getchar();
-		
+
 		if (ch == 'e')
 			gsMain.exitApplication = true;
-		
+
 		usleep(DELAY_KEYBOARDCONTROLLOOP);
 	}
 
@@ -135,7 +149,7 @@ int main_ExitApplication()
 	int retval = 0;
 	pthread_t thrServerExitApp = 0;
 	int hasError = false;
-	
+
 	// server on exit application
 	retval = pthread_create(&thrServerExitApp, NULL, server_ThrfOnExitApplication, NULL);
 	if (retval != 0)
@@ -143,12 +157,12 @@ int main_ExitApplication()
 		Log("%s: Failed to create thread for exiting server applications", __FUNCTION__, i);
 		hasError = true;
 	}
-	
+
 	// join thread and wait for finish
 	pthread_join(thrServerExitApp, (void**)&retval);
 	if (retval != OK)
 		hasError = true;
-	
+
 	// cancel main threads
 	for(i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
 	{
@@ -159,9 +173,9 @@ int main_ExitApplication()
 			hasError = true;
 		}
 	}
-	
+
 	if (hasError)
 		return ERROR;
-	
+
 	return OK;
 }

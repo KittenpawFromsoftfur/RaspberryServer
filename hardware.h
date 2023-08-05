@@ -1,9 +1,12 @@
-#ifndef HARDWARE_H
-#define HARDWARE_H
+#pragma once
 
-// public functions
-void hardware_Init();
-void hardware_Set();
-void hardware_Clear();
-
-#endif
+// classes
+class CHardware
+{
+public:
+    static void Init();
+    static void Set(int Pin, int State);
+    static void Clear();
+    static bool IsGpioValid(int Number);
+    static bool IsMosfetValid(int Number);
+};

@@ -1,5 +1,4 @@
-#ifndef MAIN_H
-#define MAIN_H
+#pragma once
 
 #include <pthread.h>
 
@@ -31,5 +30,3 @@ typedef struct
 
 // public variables
 extern S_MAIN gsMain;
-
-#endif

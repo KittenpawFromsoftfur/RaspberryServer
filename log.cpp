@@ -7,50 +7,31 @@
 #include "core.h"
 #include "log.h"
 
-S_LOGDATA gsLogdata = { 0 };
-
-// private functions
-int log_WriteToFile(const char *pMessage);
-int log_CheckFilenameFormat(const char *pFilename);
-
 // if the log has to be placed in a non-existing folder, that folder has to be created first, or the logging will fail
-int log_Init(const char *pLogFilename)
+CLog::CLog(const char *pLogFilename)
 {
-	int retval = 0;
-	struct stat sDir = { 0 };
-
-	memset((void*)&gsLogdata, 0, sizeof(gsLogdata));
-	strncpy(gsLogdata.aLogFilename, pLogFilename, ARRAYSIZE(gsLogdata.aLogFilename));
-	gsLogdata.isInitialized = 1;
-
-	return OK;
+	strncpy(m_aLogFilename, pLogFilename, ARRAYSIZE(m_aLogFilename);
 }
 
-void Log(const char *pMessage, ...)
+void CLog::Log(const char *pMessage, ...)
 {
 	char buffer[LOG_MSG_MAXLEN] = { 0 };
     va_list argptr;
 
-	if (!gsLogdata.isInitialized)
-	{
-		printf("%s: Failed to log, log is not initialized\n", __FUNCTION__);
-		return;
-	}
-
     va_start(argptr, pMessage);
 	vsprintf(buffer, pMessage, argptr);
 	printf("%s\n", buffer);
-	log_WriteToFile(buffer);
+	WriteToFile(buffer);
     va_end(argptr);
 }
 
-int log_WriteToFile(const char *pMessage)
+int CLog::WriteToFile(const char *pMessage)
 {
 	FILE *pFile = 0;
 	time_t t = time(0);
 	struct tm sTime = *localtime(&t);
 
-	pFile = fopen(gsLogdata.aLogFilename, "a");
+	pFile = fopen(m_aLogFilename, "a");
 	if (pFile == 0)
 	{
 		printf("%s: Failed to open file\n", __FUNCTION__);

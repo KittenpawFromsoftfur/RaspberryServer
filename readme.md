@@ -46,11 +46,11 @@ The following is the output of the 'help' function for a locked account.
 ```
 
 # Raspberry setup
-## Flash "PI OS 32 bit recommended" with the settings:
+## Use "Raspberry Pi Imager" to Flash "PI OS 32 bit recommended" with the settings:
 ```
-ssh enabled
-password: <password>
-name of raspberry "black"
+Enable SSH: Yes
+
+Some username-dependend filepaths are hardcoded. Either use the username "black" or change the filepaths in the code.
 ```
 
 ## Install wiringPi
@@ -62,8 +62,8 @@ sudo dpkg -i wiringpi-latest.deb
 
 ## Make server directory and grant permissions
 ```
-mkdir /home/black/server
-chmod 777
+mkdir /home/<username>/server
+chmod +777 -R /home/<username>/server
 ```
 
 ## Set up a static IP address
@@ -94,7 +94,7 @@ apt-get install telnet
 ## Add to autostart
 Create link to xserver.service in autostart directory
 ```
-ln -s /home/black/server/xserver.service /etc/systemd/system
+ln -s /home/<username>/server/xserver.service /etc/systemd/system
 ```
 
 Reload services daemon to make it aware of newly added service

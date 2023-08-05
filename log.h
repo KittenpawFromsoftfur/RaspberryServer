@@ -1,19 +1,18 @@
-#ifndef LOG_H
-#define LOG_H
+#pragma once
 
 // value defines
-#define LOG_MSG_MAXLEN 1024
-#define LOG_PATH_MAXLEN 1024
+#define CLOG_MSG_MAXLEN 1024
+#define CLOG_PATH_MAXLEN 1024
 
-// structs
-typedef struct
+// classes
+class CLog
 {
-	char aLogFilename[LOG_PATH_MAXLEN];
-	int isInitialized;
-}S_LOGDATA;
+public:
+	CLog(const char *pLogFilename);
+	void Log(const char *pMessage, ...);
 
-// public functions
-int log_Init(const char *pLogFilename);
-void Log(const char *pMessage, ...);
+private:
+	int WriteToFile(const char *pMessage);
 
-#endif
+	char m_aLogFilename[CLOG_PATH_MAXLEN];
+};

@@ -1,5 +1,4 @@
-#ifndef SERVER_H
-#define SERVER_H
+#pragma once
 
 #include <pthread.h>
 #include <arpa/inet.h>
@@ -8,72 +7,72 @@
 #include "core.h"
 
 // server
-#define NET_SERVER_IP "127.0.0.1"
-#define NET_SERVER_PORT 8000
-#define NET_BUFFERSIZE 2048
+#define CSERVER_NET_IP "127.0.0.1"
+#define CSERVER_NET_PORT 8000
+#define CSERVER_NET_BUFFERSIZE 2048
 
-#define MAX_LEN_LISTENQUEUE 10
-#define MAX_SLOTS 10
+#define CSERVER_MAX_LEN_LISTENQUEUE 10
+#define CSERVER_MAX_SLOTS 10
 
-#define FOLDERPATH_FILESTASH_MINIMUM "/home/black/server/"
-#define FOLDERPATH_ACCOUNTS "/home/black/server/accounts"
-#define FOLDERPATH_DEFINES_GPIO "/home/black/server/defines_gpio"
-#define FOLDERPATH_DEFINES_MOSFET "/home/black/server/defines_mosfet"
+#define CSERVER_FOLDERPATH_FILESTASH_MINIMUM "/home/black/server/"
+#define CSERVER_FOLDERPATH_ACCOUNTS "/home/black/server/accounts"
+#define CSERVER_FOLDERPATH_DEFINES_GPIO "/home/black/server/defines_gpio"
+#define CSERVER_FOLDERPATH_DEFINES_MOSFET "/home/black/server/defines_mosfet"
 
-#define RESPONSE_PREFIX "> "
-#define COMMAND_STRING_HELP "help"
+#define CSERVER_RESPONSE_PREFIX "> "
+#define CSERVER_COMMAND_STRING_HELP "help"
 
-#define CHARRANGE_ASCII_READABLE "[Aa-Zz, 0-9]"
+#define CSERVER_CHARRANGE_ASCII_READABLE "[Aa-Zz, 0-9]"
 
-#define MAX_LEN_ECHO 128
+#define CSERVER_MAX_LEN_ECHO 128
 
-#define DELAY_RECEIVE 10000
-#define DELAY_UPDATELOOP 1000000
+#define CSERVER_DELAY_RECEIVE 10000
+#define CSERVER_DELAY_UPDATELOOP 1000000
 
-#define TIMEOUT_CLIENTCONNECTION_READ 5// s
+#define CSERVER_TIMEOUT_CLIENTCONNECTION_READ 5// s
 
-#define MAX_LEN_TOKEN 256
-#define MAX_TOKENS 10
+#define CSERVER_MAX_LEN_TOKEN 256
+#define CSERVER_MAX_TOKENS 10
 
-#define MAX_LEN_COMHELP 256
-#define MAX_LEN_COMPARAMS 256
-#define MAX_LEN_COMEXAMPLE 256
+#define CSERVER_MAX_LEN_COMHELP 256
+#define CSERVER_MAX_LEN_COMPARAMS 256
+#define CSERVER_MAX_LEN_COMEXAMPLE 256
 
-#define MAX_LEN_SYSTEMCOMMAND 256
+#define CSERVER_MAX_LEN_SYSTEMCOMMAND 256
 
-#define MIN_LEN_CREDENTIALS 1
-#define MAX_LEN_CREDENTIALS 16
-#define MAX_ACCOUNTS 100
-#define MAX_LINES 50
-#define MAX_LEN_LINES 64
-#define MIN_LEN_DEFINES 1
-#define MAX_LEN_DEFINES 16
-#define MAX_LEN_USERFILES (MAX_LEN_CREDENTIALS + 2)
+#define CSERVER_MIN_LEN_CREDENTIALS 1
+#define CSERVER_MAX_LEN_CREDENTIALS 16
+#define CSERVER_MAX_ACCOUNTS 100
+#define CSERVER_MAX_LINES 50
+#define CSERVER_MAX_LEN_LINES 64
+#define CSERVER_MIN_LEN_DEFINES 1
+#define CSERVER_MAX_LEN_DEFINES 16
+#define CSERVER_MAX_LEN_USERFILES (CSERVER_MAX_LEN_CREDENTIALS + 2)
 
-#define COMFLAG_EXEC_LOGGEDIN (1 << 0)
-#define COMFLAG_EXEC_LOGGEDOUT (1 << 1)
-#define COMFLAG_EXEC_ACTIVATEDONLY (1 << 2)// overwrites logged in / out. Incorrect parameters treat as unknown.
-#define COMFLAG_VISI_LOGGEDIN (1 << 3)
-#define COMFLAG_VISI_LOGGEDOUT (1 << 4)
-#define COMFLAG_VISI_ACTIVATEDONLY (1 << 5)// overwrites logged in / out. Incorrect parameters treat as unknown.
+#define CSERVER_COMFLAG_EXEC_LOGGEDIN (1 << 0)
+#define CSERVER_COMFLAG_EXEC_LOGGEDOUT (1 << 1)
+#define CSERVER_COMFLAG_EXEC_ACTIVATEDONLY (1 << 2)// overwrites logged in / out. Incorrect parameters treat as unknown.
+#define CSERVER_COMFLAG_VISI_LOGGEDIN (1 << 3)
+#define CSERVER_COMFLAG_VISI_LOGGEDOUT (1 << 4)
+#define CSERVER_COMFLAG_VISI_ACTIVATEDONLY (1 << 5)// overwrites logged in / out. Incorrect parameters treat as unknown.
 
-#define RESPONSE_LOGIN_FAILED "Wrong username or password"
-#define MAX_BANNED_IPS 100
-#define MAX_FAILED_LOGINS 3
-#define IP_BAN_DURATION_FAILEDLOGINS TIME_TO_SECONDS_HMS(0, 5, 0)
-#define MAX_SUSPICIOUS_IPS MAX_BANNED_IPS
-#define MAX_FAILED_LOGINS_SUSPICIOUS (MAX_FAILED_LOGINS * 2)// Prevents abuse of failed login counter reset when reconnecting. Forgives clumsiness but also bans abusers harder.
-#define IP_BAN_DURATION_SUSPICIOUS TIME_TO_SECONDS_HMS(0, 30, 0)
-#define SUSPICIOUS_FALLOFF_TIME TIME_TO_SECONDS_HMS(0, 30, 0)// Is also reset when a ban ends or a login with an activated account succeeds
+#define CSERVER_RESPONSE_LOGIN_FAILED "Wrong username or password"
+#define CSERVER_MAX_BANNED_IPS 100
+#define CSERVER_MAX_FAILED_LOGINS 3
+#define CSERVER_IP_BAN_DURATION_FAILEDLOGINS TIME_TO_SECONDS_HMS(0, 5, 0)
+#define CSERVER_MAX_SUSPICIOUS_IPS MAX_BANNED_IPS
+#define CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS (CSERVER_MAX_FAILED_LOGINS * 2)// Prevents abuse of failed login counter reset when reconnecting. Forgives clumsiness but also bans abusers harder.
+#define CSERVER_IP_BAN_DURATION_SUSPICIOUS TIME_TO_SECONDS_HMS(0, 30, 0)
+#define CSERVER_SUSPICIOUS_FALLOFF_TIME TIME_TO_SECONDS_HMS(0, 30, 0)// Is also reset when a ban ends or a login with an activated account succeeds
 
 // command specific
-#define COM_GPIO_RANGE "0 - 7, 10 - 16, 21 - 31"
-#define COM_MOSFET_RANGE "1 - 8"
+#define CSERVER_COM_GPIO_RANGE "0 - 7, 10 - 16, 21 - 31"
+#define CSERVER_COM_MOSFET_RANGE "1 - 8"
 
-#define COM_ACTIVATE_PASS1 "give"
-#define COM_ACTIVATE_PASS2 "duck"
-#define COM_ACTIVATE_PASS3 "cookie"
-#define COM_ACTIVATE_RESPONSE "Quack"
+#define CSERVER_COM_ACTIVATE_PASS1 "give"
+#define CSERVER_COM_ACTIVATE_PASS2 "duck"
+#define CSERVER_COM_ACTIVATE_PASS3 "cookie"
+#define CSERVER_COM_ACTIVATE_RESPONSE "Quack"
 
 // enums
 typedef enum
@@ -129,10 +128,10 @@ typedef struct
 typedef struct
 {
 	E_COMMANDS ID;
-	char aName[MAX_LEN_TOKEN];
-	char aHelp[MAX_LEN_COMHELP];
-	char aParams[MAX_LEN_COMPARAMS];
-	char aExample[MAX_LEN_COMEXAMPLE];
+	char aName[CSERVER_MAX_LEN_TOKEN];
+	char aHelp[CSERVER_MAX_LEN_COMHELP];
+	char aParams[CSERVER_MAX_LEN_COMPARAMS];
+	char aExample[CSERVER_MAX_LEN_COMEXAMPLE];
 	int flags;
 }S_COMMAND;
 
@@ -142,7 +141,7 @@ typedef struct
 	pthread_t thrClientConnection;
 	S_PARAMS_CLIENTCONNECTION threadParamsClientConnection;
 	in_addr_t clientIP;
-	char aUsername[MAX_LEN_USERFILES];
+	char aUsername[CSERVER_MAX_LEN_USERFILES];
 	int loggedIn;
 	int activated;
 	int failedLogins;
@@ -154,17 +153,42 @@ typedef struct
 {
 	int listenfd;
 	pthread_t thrUpdate;
-	in_addr_t aBannedIPs[MAX_BANNED_IPS];
-	time_t aBanStartTime[MAX_BANNED_IPS];
-	time_t aBanDuration[MAX_BANNED_IPS];
-	in_addr_t aSuspiciousIPs[MAX_SUSPICIOUS_IPS];
-	int aSuspiciousAttempts[MAX_SUSPICIOUS_IPS];
-	time_t aSuspiciousStartTime[MAX_SUSPICIOUS_IPS];
+	in_addr_t aBannedIPs[CSERVER_MAX_BANNED_IPS];
+	time_t aBanStartTime[CSERVER_MAX_BANNED_IPS];
+	time_t aBanDuration[CSERVER_MAX_BANNED_IPS];
+	in_addr_t aSuspiciousIPs[CSERVER_MAX_SUSPICIOUS_IPS];
+	int aSuspiciousAttempts[CSERVER_MAX_SUSPICIOUS_IPS];
+	time_t aSuspiciousStartTime[CSERVER_MAX_SUSPICIOUS_IPS];
 }S_SERVERINFO;
 
-// public functions
-void *server_ThrfRun(void *pArgs);
-void *server_ThrfOnExitApplication(void *pArgs);
-int server_IsGpioValid(int PinNumber);
+class CServer
+{
+public:
+	void *ThrfRun(void *pArgs);
+	void *ThrfOnExitApplication(void *pArgs);
 
-#endif
+private:
+	void *ThrfClientConnection(void *pArgs);
+	void *ThrfUpdate(void *pArgs);
+	int ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, char *pResp, size_t LenResp);
+	void EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX_TOKENS][MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
+	int IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags);
+	int IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags);
+	int MosfetClear();
+	int ResetHardware();
+	void MakeFilepath(E_FILETYPES FileType, const char *pUsername, int FilenameOnly, char *pFullpath, size_t LenFullpath);
+	int AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPyword, int *pWrongCredentials, char *pError, size_t LenError);
+	int CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *pError, size_t LenError);
+	int WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const char *pValue, char *pError, size_t LenError);
+	int ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char *pKey, size_t LenKey, char *pError, size_t LenError);
+	int RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pError, size_t LenError);
+	int BanIP(in_addr_t IP, time_t Duration);
+	int CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime);
+	void CleanOldSession(S_SLOTINFO *psSlotInfo);
+	void CloseClientSocket(S_SLOTINFO *psSlotInfo);
+	void ResetSlot(S_SLOTINFO *psSlotInfo);
+	int AddSuspiciousIP(in_addr_t IP);
+	void RemoveSuspiciousIP(in_addr_t IP);
+	int GetSuspiciousAttempts(in_addr_t IP);
+	struct in_addr GetIPStruct(in_addr_t IP);
+};

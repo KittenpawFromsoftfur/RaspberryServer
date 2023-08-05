@@ -69,36 +69,7 @@ char gaaEchoes[][MAX_LEN_ECHO] =
 S_SERVERINFO gsServerInfo = { 0 };
 S_SLOTINFO gasSlotInfo[MAX_SLOTS] = { { 0 } };
 
-// private functions
-void *server_ThrfRun(void *pArgs);
-void *server_ThrfClientConnection(void *pArgs);
-void *server_ThrfUpdate();
-void *server_ThrfOnExitApplication(void *pArgs);
-int server_ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, char *pResp, size_t LenResp);
-void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX_TOKENS][MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
-int server_IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags);
-int server_IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags);
-int server_IsGpioValid(int PinNumber);
-int server_IsMosfetValid(int MosfetNumber);
-int server_MosfetClear();
-int server_ResetHardware();
-void server_MakeFilepath(E_FILETYPES FileType, const char *pUsername, int FilenameOnly, char *pFullpath, size_t LenFullpath);
-int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPyword, int *pWrongCredentials, char *pError, size_t LenError);
-int server_CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *pError, size_t LenError);
-int server_WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const char *pValue, char *pError, size_t LenError);
-int server_ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char *pKey, size_t LenKey, char *pError, size_t LenError);
-int server_RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pError, size_t LenError);
-int server_BanIP(in_addr_t IP, time_t Duration);
-int server_CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime);
-void server_CleanOldSession(S_SLOTINFO *psSlotInfo);
-void server_CloseClientSocket(S_SLOTINFO *psSlotInfo);
-void server_ResetSlot(S_SLOTINFO *psSlotInfo);
-int server_AddSuspiciousIP(in_addr_t IP);
-void server_RemoveSuspiciousIP(in_addr_t IP);
-int server_GetSuspiciousAttempts(in_addr_t IP);
-struct in_addr server_GetIPStruct(in_addr_t IP);
-
-void *server_ThrfRun(void *pArgs)
+void *CServer::ThrfRun(void *pArgs)
 {
 	int retval = 0;
 	int connfdCurrent = 0;
@@ -116,7 +87,7 @@ void *server_ThrfRun(void *pArgs)
 		gsMain.aThreadStatus[THR_SERVERRUN] = ERROR;
 		return (void*)ERROR;
 	}
-		
+
 	// initialize hardware
 	hardware_Init();
 
@@ -140,7 +111,7 @@ void *server_ThrfRun(void *pArgs)
 		gsMain.aThreadStatus[THR_SERVERRUN] = ERROR;
 		return (void*)ERROR;
 	}
-	
+
 	// create defines mosfet folder path
 	retval = core_Mkdir(FOLDERPATH_DEFINES_MOSFET);
 	if (retval != OK)
@@ -149,7 +120,7 @@ void *server_ThrfRun(void *pArgs)
 		gsMain.aThreadStatus[THR_SERVERRUN] = ERROR;
 		return (void*)ERROR;
 	}
-	
+
 	// create update thread
 	retval = pthread_create(&gsServerInfo.thrUpdate, NULL, server_ThrfUpdate, NULL);
 	if (retval != 0)
@@ -167,7 +138,7 @@ void *server_ThrfRun(void *pArgs)
 		gsMain.aThreadStatus[THR_SERVERRUN] = ERROR;
 		return (void*)ERROR;
 	}
-	
+
 	// server socket option: allow reusing socket
 	sockOptValue = 1;
 	retval = setsockopt(gsServerInfo.listenfd, SOL_SOCKET, SO_REUSEADDR, &sockOptValue, sizeof(sockOptValue));
@@ -207,11 +178,11 @@ void *server_ThrfRun(void *pArgs)
     while(1)
     {
 		// accept incoming connections
-		Log("Waiting for new connection...");
+		Log("Ready for new connection...");
 
 		socklenCurrent = sizeof(struct sockaddr);
 		connfdCurrent = accept(gsServerInfo.listenfd, (struct sockaddr*)&sockaddr_current, &socklenCurrent);
-		
+
 		// check connection details
 		Log("Accepted port %d, IP %s", htons(sockaddr_current.sin_port), inet_ntoa(sockaddr_current.sin_addr));
 
@@ -253,7 +224,7 @@ void *server_ThrfRun(void *pArgs)
 			close(connfdCurrent);
 			continue;
 		}
-		
+
 		// client socket option: enable keepalive
         sockOptValue = 1;
         retval = setsockopt(connfdCurrent, SOL_SOCKET, SO_KEEPALIVE, &sockOptValue, sizeof(sockOptValue));
@@ -264,7 +235,7 @@ void *server_ThrfRun(void *pArgs)
 			gsMain.aThreadStatus[THR_SERVERRUN] = ERROR;
 			return (void*)ERROR;
 		}
-		
+
         // client socket option: keepalive idle time
         sockOptValue = 10;
         retval = setsockopt(connfdCurrent, IPPROTO_TCP, TCP_KEEPIDLE, &sockOptValue, sizeof(sockOptValue));
@@ -275,7 +246,7 @@ void *server_ThrfRun(void *pArgs)
 			gsMain.aThreadStatus[THR_SERVERRUN] = ERROR;
 			return (void*)ERROR;
 		}
-		
+
         // client socket option: keepalive interval
         sockOptValue = 10;
         retval = setsockopt(connfdCurrent, IPPROTO_TCP, TCP_KEEPINTVL, &sockOptValue, sizeof(sockOptValue));
@@ -286,7 +257,7 @@ void *server_ThrfRun(void *pArgs)
 			gsMain.aThreadStatus[THR_SERVERRUN] = ERROR;
 			return (void*)ERROR;
 		}
-		
+
         // client socket option: keepalive probes
         sockOptValue = 2;
         retval = setsockopt(connfdCurrent, IPPROTO_TCP, TCP_KEEPCNT, &sockOptValue, sizeof(sockOptValue));
@@ -297,7 +268,7 @@ void *server_ThrfRun(void *pArgs)
 			gsMain.aThreadStatus[THR_SERVERRUN] = ERROR;
 			return (void*)ERROR;
 		}
-		
+
 		// add IP to list
 		gasSlotInfo[slotIndex].clientIP = sockaddr_current.sin_addr.s_addr;
 
@@ -322,7 +293,7 @@ void *server_ThrfRun(void *pArgs)
 	return (void*)OK;
 }
 
-void *server_ThrfClientConnection(void *pArgs)
+void *CServer::ThrfClientConnection(void *pArgs)
 {
 	int retval = 0;
 	S_PARAMS_CLIENTCONNECTION *psParams = (S_PARAMS_CLIENTCONNECTION*)pArgs;
@@ -334,7 +305,7 @@ void *server_ThrfClientConnection(void *pArgs)
 	struct timeval sTimeval = { 0 };
 	fd_set sFDSet = { 0 };
 	int timeoutOccurred = false;
-	
+
 	// check if IP banned, then close socket
 	if (server_CheckIPBanned(psSlotInfo, &sTime))
 	{
@@ -344,7 +315,7 @@ void *server_ThrfClientConnection(void *pArgs)
 		server_CleanOldSession(psSlotInfo);
 		return (void*)ERROR;
 	}
-	
+
 	// read from client loop
 	while(1)
 	{
@@ -367,19 +338,19 @@ void *server_ThrfClientConnection(void *pArgs)
 		if (retval > 0)
 		{
 			timeoutOccurred = false;
-			
+
 			memset(aBufRaw, 0, ARRAYSIZE(aBufRaw));
 			retval = read(psParams->sockfd, aBufRaw, ARRAYSIZE(aBufRaw));
-			
+
 			// copy aBuf and ignore certain characters
 			memset(aBuf, 0, ARRAYSIZE(aBuf));
 			core_StringCopyIgnore(aBuf, aBufRaw, ARRAYSIZE(aBuf), "\r\n");
-			
+
 			// check if client disconnected and close socket
 			if (strnlen(aBufRaw, ARRAYSIZE(aBuf)) == 0)
 			{
 				Log("Slot[%d] Disconnected", psParams->slotIndex);
-				
+
 				server_CleanOldSession(psSlotInfo);
 				return (void*)ERROR;
 			}
@@ -393,7 +364,7 @@ void *server_ThrfClientConnection(void *pArgs)
 				{
 					Log("%s: Slot[%d] Error parsing message", __FUNCTION__, psParams->slotIndex);
 				}
-				
+
 				// send response
 				if (strlen(aBufResp) > 0)
 					write(psParams->sockfd, aBufResp, ARRAYSIZE(aBufResp));
@@ -404,7 +375,7 @@ void *server_ThrfClientConnection(void *pArgs)
 					server_CleanOldSession(psSlotInfo);
 					return (void*)ERROR;
 				}
-				
+
 				usleep(DELAY_RECEIVE);
 			}
 		}
@@ -421,27 +392,27 @@ void *server_ThrfClientConnection(void *pArgs)
 	return (void*)OK;
 }
 
-void *server_ThrfUpdate()
+void *CServer::ThrfUpdate(void *pArgs)
 {
 	time_t currentTime = 0;
 	int i = 0;
-	
+
 	while(1)
 	{
 		// get current time
 		currentTime = time(0);
-		
+
 		// update IP bans
 		for(i = 0; i < ARRAYSIZE(gsServerInfo.aBannedIPs); ++i)
 		{
 			if (gsServerInfo.aBannedIPs[i] == 0)
 				continue;
-			
+
 			if (currentTime >= gsServerInfo.aBanStartTime[i] + gsServerInfo.aBanDuration[i])
 			{
 				// remove IP from suspicious list
 				server_RemoveSuspiciousIP(gsServerInfo.aBannedIPs[i]);
-				
+
 				// unban IP
 				Log("IP[%d] '%s' has been unbanned", i, inet_ntoa(server_GetIPStruct(gsServerInfo.aBannedIPs[i])));
 				gsServerInfo.aBannedIPs[i] = 0;
@@ -449,54 +420,54 @@ void *server_ThrfUpdate()
 				gsServerInfo.aBanDuration[i] = 0;
 			}
 		}
-		
+
 		// update suspicious IPs list
 		for(i = 0; i < ARRAYSIZE(gsServerInfo.aSuspiciousIPs); ++i)
 		{
 			if (gsServerInfo.aSuspiciousIPs[i] == 0)
 				continue;
-			
+
 			if (currentTime >= gsServerInfo.aSuspiciousStartTime[i] + SUSPICIOUS_FALLOFF_TIME)
 			{
 				Log("Unlisted suspicious IP[%d] '%s'", i, inet_ntoa(server_GetIPStruct(gsServerInfo.aSuspiciousIPs[i])));
 				server_RemoveSuspiciousIP(gsServerInfo.aSuspiciousIPs[i]);
 			}
 		}
-		
+
 		usleep(DELAY_UPDATELOOP);
 	}
 }
 
-void *server_ThrfOnExitApplication(void *pArgs)
+void *CServer::ThrfOnExitApplication(void *pArgs)
 {
 	int i = 0;
 	int retval = 0;
 	int hasError = false;
-	
+
 	retval = server_ResetHardware();
 	if (retval != OK)
 		hasError = true;
-	
+
 	// cancel update thread
 	pthread_cancel(gsServerInfo.thrUpdate);
-	
+
 	// cancel client connection threads and close sockets
 	for(i = 0; i < ARRAYSIZE(gasSlotInfo); ++i)
 	{
 		pthread_cancel(gasSlotInfo[i].thrClientConnection);
 		server_CloseClientSocket(&gasSlotInfo[i]);
 	}
-	
+
 	// close server socket
 	close(gsServerInfo.listenfd);
-	
+
 	if (hasError)
 		return (void*)ERROR;
-	
+
 	return (void*)OK;
 }
 
-int server_ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, char *pResp, size_t LenResp)
+int CServer::ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, char *pResp, size_t LenResp)
 {
 	int retval = 0;
 	char *pToken = 0;
@@ -528,7 +499,7 @@ int server_ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, c
 	return OK;
 }
 
-void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX_TOKENS][MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull)
+void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX_TOKENS][MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull)
 {
 	int retval = 0;
 	int foundMatch = false;
@@ -555,7 +526,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 	char aFullParameters[NET_BUFFERSIZE] = { 0 };
 	char *pRest = 0;
 	char aSystemString[MAX_LEN_SYSTEMCOMMAND] = { 0 };
-	
+
 	// look for command
 	for(i = 0; i < ARRAYSIZE(gasCommands); ++i)
 	{
@@ -583,23 +554,23 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 		// check if command is visible
 		commandVisible = server_IsCommandVisible(psSlotInfo, gasCommands[commandIndex].flags);
 	}
-	
+
 	if (commandExecutable)
 	{
 		Log("Slot[%d] --> '%s'", psParams->slotIndex, gasCommands[commandIndex].aName);
-		
+
 		switch(gasCommands[commandIndex].ID)
 		{
 			case COM_HELP:
 				strncat(pResp, "****** Help ******\n" RESPONSE_PREFIX "All commands are case insensitive.\n", LenResp);
-				
+
 				// if logged in, inform as who
 				if (psSlotInfo->loggedIn)
 				{
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), RESPONSE_PREFIX "Logged in as '%s'.\n", psSlotInfo->aUsername);
 					strncat(pResp, aBufTemp, LenResp);
 				}
-				
+
 				// if account activated, inform
 				if (psSlotInfo->activated)
 				{
@@ -610,7 +581,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 				{
 					strncat(pResp, RESPONSE_PREFIX "\n", LenResp);
 				}
-				
+
 				for(int i = 0; i < ARRAYSIZE(gasCommands); ++i)
 				{
 					if (!server_IsCommandVisible(psSlotInfo, gasCommands[i].flags))
@@ -618,7 +589,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), RESPONSE_PREFIX "%s... %s. Usage: '%s%s%s'.", gasCommands[i].aName, gasCommands[i].aHelp, gasCommands[i].aName, strnlen(gasCommands[i].aParams, ARRAYSIZE(gasCommands[0].aParams)) > 0 ? " " : "", gasCommands[i].aParams);
 					strncat(pResp, aBufTemp, LenResp);
-					
+
 					// don't give example if no params needed
 					if (strnlen(gasCommands[i].aExample, ARRAYSIZE(gasCommands[0].aExample)) > 0)
 					{
@@ -633,7 +604,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 
 				strncat(pResp, RESPONSE_PREFIX "******************", LenResp);
 			break;
-			
+
 			case COM_ACTIVATEACCOUNT:
 				// check if the passphrase is correct
 				if (core_StringCompareNocase(aaToken[1], COM_ACTIVATE_PASS1, ARRAYSIZE(aaToken[0])) == 0 &&
@@ -660,7 +631,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					respondCommandUnknown = true;
 				}
 			break;
-			
+
 			case COM_REGISTER:
 				retval = server_AccountAction(ACCACTION_REGISTER, psSlotInfo, aaToken[1], aaToken[2], NULL, pResp, LenResp);
 				if (retval != OK)
@@ -674,7 +645,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					strncat(pResp, aBufTemp, LenResp);
 				}
 			break;
-			
+
 			case COM_LOGIN:
 				retval = server_AccountAction(ACCACTION_LOGIN, psSlotInfo, aaToken[1], aaToken[2], &wrongCredentials, pResp, LenResp);
 				if (retval != OK)
@@ -689,10 +660,10 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 							gsMain.exitApplication = true;
 						}
 					}
-					
+
 					susAttempts = server_GetSuspiciousAttempts(psSlotInfo->clientIP);
 					Log("Slot[%d] Failed to log in with '%s' '%s', failed logins: %d/%d, total attempts of '%s': %d/%d", psParams->slotIndex, aaToken[1], aaToken[2], psSlotInfo->failedLogins, MAX_FAILED_LOGINS, inet_ntoa(server_GetIPStruct(psSlotInfo->clientIP)), susAttempts, MAX_FAILED_LOGINS_SUSPICIOUS);
-					
+
 					// check if IP ban necessary
 					if (susAttempts >= MAX_FAILED_LOGINS_SUSPICIOUS)
 					{
@@ -704,7 +675,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 						doBan = true;
 						banTime = IP_BAN_DURATION_FAILEDLOGINS;
 					}
-					
+
 					// check if IP ban necessary by failed attempts
 					if (doBan)
 					{
@@ -731,7 +702,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					strncat(pResp, aBufTemp, LenResp);
 				}
 			break;
-			
+
 			case COM_LOGOUT:
 				retval = server_AccountAction(ACCACTION_LOGOUT, psSlotInfo, NULL, NULL, NULL, pResp, LenResp);
 				if (retval != OK)
@@ -745,28 +716,28 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					strncat(pResp, aBufTemp, LenResp);
 				}
 			break;
-			
+
 			case COM_SHUTDOWN:
 				Log("Slot[%d] Has shut down the server", psParams->slotIndex);
 				gsMain.exitApplication = true;
 			break;
-			
+
 			case COM_RUN:
 				// remove command from parameters
 				strncpy(aFullMessage, pMsgFull, ARRAYSIZE(aFullMessage));
 				pRest = aFullMessage;
 				strtok_r(pRest, " ", &pRest);
 				strncpy(aFullParameters, pRest, ARRAYSIZE(aFullParameters));
-				
+
 				Log("Slot[%d] Running command '%s'...", psParams->slotIndex, aFullParameters);
-				
+
 				retval = system(aFullParameters);
-				
+
 				Log("Slot[%d] Command returned %d", psParams->slotIndex, retval);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "'%s' returned %d", aFullParameters, retval);
 				strncat(pResp, aBufTemp, LenResp);
 			break;
-			
+
 			case COM_DELETE:
 				// log
 				if (core_StringCompareNocase(aaToken[1], "log", ARRAYSIZE(aaToken[0])) == 0)
@@ -799,7 +770,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 							Log("%s: Failed to additionally delete defines gpio file", __FUNCTION__);
 						}
 						else
-						{							
+						{
 							// delete defines mosfet
 							retval = server_RemoveFile(psSlotInfo, FILETYPE_DEFINES_MOSFET, pResp, LenResp);
 							if (retval != OK)
@@ -807,7 +778,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 								Log("%s: Failed to additionally delete defines mosfet file", __FUNCTION__);
 							}
 							else
-							{							
+							{
 								// log out
 								retval = server_AccountAction(ACCACTION_LOGOUT, psSlotInfo, NULL, NULL, NULL, pResp, LenResp);
 								if (retval != OK)
@@ -931,7 +902,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, pin number must be a number");
 					strncat(pResp, aBufTemp, LenResp);
 				}// number must be in range
-				else if (!server_IsGpioValid(pinNumber))
+				else if (!CHardware::IsGpioValid(pinNumber))
 				{
 					Log("Slot[%d] Error, pin number must be " COM_GPIO_RANGE, psParams->slotIndex);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, pin number must be " COM_GPIO_RANGE);
@@ -964,7 +935,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 						strncat(pResp, aBufTemp, LenResp);
 					}
 					else
-					{					
+					{
 						retval = server_WriteKey(psSlotInfo, FILETYPE_DEFINES_GPIO, pinNumber, aaToken[2], pResp, LenResp);
 						if (retval != OK)
 						{
@@ -984,19 +955,19 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 				// check number
 				isName = false;
 				pinNumber = -1;
-				
+
 				// check if name is name or number
 				if (core_IsLetter(aaToken[1][0]))
 					isName = true;
-				
+
 				if (isName)
 				{
 					for (i = 0; i <= 31; ++i)
 					{
 						// skip non-gpio and i2c-1 pins
-						if (!server_IsGpioValid(i))
+						if (!IsGpioValid(i))// ----------------------- TODO
 							continue;
-						
+
 						retval = server_ReadKey(psSlotInfo->aUsername, FILETYPE_DEFINES_GPIO, i, aRead, ARRAYSIZE(aRead), pResp, LenResp);
 						if (retval != OK)
 						{
@@ -1016,7 +987,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 				{
 					pinNumber = atoi(aaToken[1]);
 				}
-				
+
 				// check pin number
 				if (!server_IsGpioValid(pinNumber))
 				{
@@ -1029,11 +1000,11 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					// check state
 					isName = false;
 					pinState = -1;
-					
+
 					// check if state is name or number (or empty)
 					if (core_IsLetter(aaToken[2][0]) || strlen(aaToken[2]) == 0)
 						isName = true;
-					
+
 					// check on/off/high/low
 					if (isName)
 					{
@@ -1050,7 +1021,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					{
 						pinState = atoi(aaToken[2]);
 					}
-					
+
 					// check pin state validity
 					if (pinState < 0 || pinState > 1)
 					{
@@ -1062,22 +1033,22 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					{
 						// set pin
 						hardware_Set(pinNumber, pinState);
-						
+
 						Log("Slot[%d] Pin %s (%d) --> %s", psParams->slotIndex, aaToken[1], pinNumber, aaToken[2]);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Pin %s (%d) --> %s", aaToken[1], pinNumber, aaToken[2]);
 						strncat(pResp, aBufTemp, LenResp);
 					}
 				}
 			break;
-			
+
 			case COM_CLEAR:
 				hardware_Clear();
-				
+
 				Log("Slot[%d] Cleared pins", psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Cleared pins");
 				strncat(pResp, aBufTemp, LenResp);
 			break;
-			
+
 			case COM_MOSDEFINE:
 				pinNumber = atoi(aaToken[1]);
 
@@ -1120,7 +1091,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 						strncat(pResp, aBufTemp, LenResp);
 					}
 					else
-					{					
+					{
 						retval = server_WriteKey(psSlotInfo, FILETYPE_DEFINES_MOSFET, pinNumber, aaToken[2], pResp, LenResp);
 						if (retval != OK)
 						{
@@ -1135,16 +1106,16 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					}
 				}
 			break;
-			
+
 			case COM_MOSSET:
 				// check number
 				isName = false;
 				pinNumber = -1;
-				
+
 				// check if name is name or number
 				if (core_IsLetter(aaToken[1][0]))
 					isName = true;
-				
+
 				if (isName)
 				{
 					for (i = 0; i <= 8; ++i)
@@ -1168,7 +1139,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 				{
 					pinNumber = atoi(aaToken[1]);
 				}
-				
+
 				// check mosfet number
 				if (!server_IsMosfetValid(pinNumber))
 				{
@@ -1181,11 +1152,11 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					// check state
 					isName = false;
 					pinState = -1;
-					
+
 					// check if state is name or number (or empty)
 					if (core_IsLetter(aaToken[2][0]) || strlen(aaToken[2]) == 0)
 						isName = true;
-					
+
 					// check on/off/high/low
 					if (isName)
 					{
@@ -1202,7 +1173,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					{
 						pinState = atoi(aaToken[2]);
 					}
-					
+
 					// check mosfet state validity
 					if (pinState < 0 || pinState > 1)
 					{
@@ -1215,7 +1186,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 						// set mosfet
 						snprintf(aSystemString, ARRAYSIZE(aSystemString), "8mosind 0 write %d %s", pinNumber, pinState == 1 ? "on" : "off");
 						retval = system(aSystemString);
-						
+
 						if (retval != 0)
 						{
 							Log("Slot[%d] Failed to write mosfet, returned %d", psParams->slotIndex, retval);
@@ -1231,16 +1202,16 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 					}
 				}
 			break;
-			
+
 			case COM_MOSREAD:
 				Log("Slot[%d] Implement function 'mosread' please!", psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Implement function 'mosread' please!");
 				strncat(pResp, aBufTemp, LenResp);
 			break;
-			
+
 			case COM_MOSCLEAR:
 				retval = server_MosfetClear();
-				
+
 				if (retval != 0)
 				{
 					Log("Slot[%d] Failed to clear mosfets, returned %d", psParams->slotIndex, retval);
@@ -1261,7 +1232,7 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 				strncat(pResp, aBufTemp, LenResp);
 				Log("Echoed '%s'", pResp);
 			break;
-			
+
 			case COM_EXIT:
 				psSlotInfo->requestedDisconnect = true;
 			break;
@@ -1275,12 +1246,12 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 	// unknown command error message
 	if (respondCommandUnknown)
 	{
-		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Unknown command '%s', use '"COMMAND_STRING_HELP"'", aaToken[0]);
+		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Unknown command '%s', use '" COMMAND_STRING_HELP "'", aaToken[0]);
 		strncat(pResp, aBufTemp, LenResp);
 	}
 	else if (respondParametersWrong)
 	{
-		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Invalid parameters, use '"COMMAND_STRING_HELP"'");
+		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Invalid parameters, use '" COMMAND_STRING_HELP "'");
 		strncat(pResp, aBufTemp, LenResp);
 	}
 
@@ -1291,10 +1262,10 @@ void server_EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX
 	//core_StringToUpper(pResp, LenResp);
 }
 
-int server_IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags)
+int CServer::IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags)
 {
 	int isExecutable = false;
-	
+
 	// only logged in can execute flag: logged in
 	if (psSlotInfo->loggedIn)
 	{
@@ -1306,21 +1277,21 @@ int server_IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags)
 		if ((Flags & COMFLAG_EXEC_LOGGEDOUT))
 			isExecutable = true;
 	}
-	
+
 	// only activated can execute flag: activatedonly
 	if (!psSlotInfo->activated)
 	{
 		if ((Flags & COMFLAG_EXEC_ACTIVATEDONLY))
 			isExecutable = false;
 	}
-	
+
 	return isExecutable;
 }
 
-int server_IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags)
+int CServer::IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags)
 {
 	int isVisible = false;
-	
+
 	// only logged in can see flag: logged in
 	if (psSlotInfo->loggedIn)
 	{
@@ -1332,7 +1303,7 @@ int server_IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags)
 		if ((Flags & COMFLAG_VISI_LOGGEDOUT))
 			isVisible = true;
 	}
-	
+
 	// only activated can see flag: activatedonly
 	if (!psSlotInfo->activated)
 	{
@@ -1343,50 +1314,34 @@ int server_IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags)
 	return isVisible;
 }
 
-int server_IsGpioValid(int PinNumber)
-{
-	if (PinNumber < 0 || (PinNumber > 7 && PinNumber < 10) || (PinNumber > 16 && PinNumber < 21) || PinNumber > 31)
-		return false;
-	
-	return true;
-}
-
-int server_IsMosfetValid(int MosfetNumber)
-{
-	if (MosfetNumber < 1 || MosfetNumber > 8)
-		return false;
-	
-	return true;
-}
-
-int server_MosfetClear()
+int CServer::MosfetClear()
 {
 	int retval = 0;
-	
+
 	retval = system("8mosind 0 write 0");
-	
+
 	if (retval != 0)
 		return ERROR;
-	
+
 	return OK;
 }
 
-int server_ResetHardware()
+int CServer::ResetHardware()
 {
 	int retval = 0;
-	
+
 	// clear GPIO pins
 	hardware_Clear();
-	
+
 	// clear mosfets
 	retval = server_MosfetClear();
 	if (retval != 0)
 		Log("%s: Failed to clear mosfets", __FUNCTION__);
-	
+
 	return retval;
 }
 
-void server_MakeFilepath(E_FILETYPES FileType, const char *pUsername, int FilenameOnly, char *pFullpath, size_t LenFullpath)
+void CServer::MakeFilepath(E_FILETYPES FileType, const char *pUsername, int FilenameOnly, char *pFullpath, size_t LenFullpath)
 {
 	// prefix filename with "_" so filename exploits do not work like con/aux/... in windows
 	if (FilenameOnly)
@@ -1402,17 +1357,17 @@ void server_MakeFilepath(E_FILETYPES FileType, const char *pUsername, int Filena
 				snprintf(pFullpath, LenFullpath, "%s/_%s", FOLDERPATH_ACCOUNTS, pUsername);
 				return;
 			break;
-			
+
 			case FILETYPE_DEFINES_GPIO:
 				snprintf(pFullpath, LenFullpath, "%s/_%s", FOLDERPATH_DEFINES_GPIO, pUsername);
 				return;
 			break;
-			
+
 			case FILETYPE_DEFINES_MOSFET:
 				snprintf(pFullpath, LenFullpath, "%s/_%s", FOLDERPATH_DEFINES_MOSFET, pUsername);
 				return;
 			break;
-			
+
 			case FILETYPE_LOG:
 				snprintf(pFullpath, LenFullpath, "%s", gsMain.aFilepathLog);
 				return;
@@ -1421,7 +1376,7 @@ void server_MakeFilepath(E_FILETYPES FileType, const char *pUsername, int Filena
 	}
 }
 
-int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPassword, int *pWrongCredentials, char *pError, size_t LenError)
+int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPassword, int *pWrongCredentials, char *pError, size_t LenError)
 {
 	FILE *pFile = 0;
 	char aFilename[MAX_LEN_USERFILES] = { 0 };
@@ -1432,14 +1387,14 @@ int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo,
 	int retval = 0;
 	char aRead[MAX_LEN_LINES] = { 0 };
 	int fileExists = false;
-	
+
 	// reset wrong credentials variable
 	if (pWrongCredentials)
 		*pWrongCredentials = false;
-	
+
 	// register / login check credentials for validity
 	if (AccountAction == ACCACTION_REGISTER || AccountAction == ACCACTION_LOGIN)
-	{	
+	{
 		// check username length
 		len = strnlen(pUsername, MAX_LEN_USERFILES);
 		if (len < MIN_LEN_CREDENTIALS || len > MAX_LEN_CREDENTIALS)
@@ -1449,7 +1404,7 @@ int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo,
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
 		}
-		
+
 		// check username ascii
 		if (!core_CheckStringAscii(pUsername, MAX_LEN_CREDENTIALS + 1))
 		{
@@ -1468,7 +1423,7 @@ int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo,
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
 		}
-		
+
 		// check password ascii
 		if (!core_CheckStringAscii(pPassword, MAX_LEN_CREDENTIALS + 1))
 		{
@@ -1477,12 +1432,12 @@ int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo,
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
 		}
-		
+
 		// check if account file already existing
-		server_MakeFilepath(0, pUsername, true, aFilename, ARRAYSIZE(aFilename));
+		server_MakeFilepath(FILETYPE_ACCOUNT, pUsername, true, aFilename, ARRAYSIZE(aFilename));
 		fileExists = core_CheckFileExists(FOLDERPATH_ACCOUNTS, aFilename, ARRAYSIZE(aFilename));
 	}
-	
+
 	switch(AccountAction)
 	{
 		case ACCACTION_REGISTER:
@@ -1494,7 +1449,7 @@ int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo,
 				strncat(pError, aBufTemp, LenError);
 				return ERROR;
 			}
-			
+
 			// check if any more registrations allowed
 			fileCount = core_CountFilesDirectory(FOLDERPATH_ACCOUNTS);
 			if (fileCount >= MAX_ACCOUNTS)
@@ -1504,10 +1459,10 @@ int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo,
 				strncat(pError, aBufTemp, LenError);
 				return ERROR;
 			}
-			
+
 			// make filepath
 			server_MakeFilepath(FILETYPE_ACCOUNT, pUsername, false, aFilepath, ARRAYSIZE(aFilepath));
-			
+
 			// create file
 			pFile = fopen(aFilepath, "w");
 			if (!pFile)
@@ -1525,18 +1480,18 @@ int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo,
 
 			// close file
 			fclose(pFile);
-			
+
 			// create defines file gpio
 			retval = server_CreateDefinesFile(FILETYPE_DEFINES_GPIO, pUsername, pError, LenError);
 			if (retval != OK)
 				return ERROR;
-			
+
 			// create defines file mosfet
 			retval = server_CreateDefinesFile(FILETYPE_DEFINES_MOSFET, pUsername, pError, LenError);
 			if (retval != OK)
 				return ERROR;
 		break;
-		
+
 		case ACCACTION_LOGIN:
 			// if account file already exists
 			if (fileExists != true)
@@ -1544,66 +1499,66 @@ int server_AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo,
 				Log("%s: Username '%s' does not exist", __FUNCTION__, pUsername);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), RESPONSE_LOGIN_FAILED);
 				strncat(pError, aBufTemp, LenError);
-				
+
 				if (pWrongCredentials)
 					*pWrongCredentials = true;
-				
+
 				return ERROR;
 			}
-			
+
 			// compare passwords
 			retval = server_ReadKey(pUsername, FILETYPE_ACCOUNT, ACCKEY_PASSWORD, aRead, ARRAYSIZE(aRead), pError, LenError);
 			if (retval != OK)
 				return ERROR;
-			
+
 			if (strcmp(aRead, pPassword) != 0)
 			{
 				Log("%s: Password '%s' incorrect", __FUNCTION__, pPassword);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), RESPONSE_LOGIN_FAILED);
 				strncat(pError, aBufTemp, LenError);
-				
+
 				if (pWrongCredentials)
 					*pWrongCredentials = true;
-				
+
 				return ERROR;
 			}
-			
+
 			// fill in username
 			strncpy(psSlotInfo->aUsername, pUsername, ARRAYSIZE(psSlotInfo->aUsername));
-			
+
 			// log in
 			psSlotInfo->loggedIn = true;
-			
+
 			// activated
 			retval = server_ReadKey(pUsername, FILETYPE_ACCOUNT, ACCKEY_ACTIVATED, aRead, ARRAYSIZE(aRead), pError, LenError);
 			if (retval != OK)
 				return ERROR;
-			
+
 			psSlotInfo->activated = atoi(aRead);
-			
+
 			// reset failed logins
 			psSlotInfo->failedLogins = 0;
-			
+
 			// remove IP from suspicious list if the account is activated, else non activated accounts could exploit the counter reset by logging in with a deactivated account
 			if (psSlotInfo->activated)
 				server_RemoveSuspiciousIP(psSlotInfo->clientIP);
 		break;
-		
+
 		case ACCACTION_LOGOUT:
 			server_ResetSlot(psSlotInfo);
 		break;
 	}
-	
+
 	return OK;
 }
 
-int server_CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *pError, size_t LenError)
+int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *pError, size_t LenError)
 {
 	FILE *pFile = 0;
 	char aFilepath[MAX_LEN_FILEPATH] = { 0 };
 	char aBufTemp[NET_BUFFERSIZE] = { 0 };
 	int i = 0;
-	
+
 	// check file type
 	if (FileType != FILETYPE_DEFINES_GPIO && FileType != FILETYPE_DEFINES_MOSFET)
 	{
@@ -1612,7 +1567,7 @@ int server_CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
 	}
-	
+
 	// make filepath
 	server_MakeFilepath(FileType, pUsername, false, aFilepath, ARRAYSIZE(aFilepath));
 
@@ -1631,11 +1586,11 @@ int server_CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *
 		fprintf(pFile, "\n");
 
 	fclose(pFile);
-	
+
 	return OK;
 }
 
-int server_WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const char *pValue, char *pError, size_t LenError)
+int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const char *pValue, char *pError, size_t LenError)
 {
 	FILE *pFile = 0;
 	char aFilepath[MAX_LEN_FILEPATH] = { 0 };
@@ -1648,10 +1603,10 @@ int server_WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const
 	int i = 0;
 	int eofReached = false;
 	char aBufTemp[NET_BUFFERSIZE] = { 0 };
-	
+
 	// filepath
 	server_MakeFilepath(FileType, psSlotInfo->aUsername, false, aFilepath, ARRAYSIZE(aFilepath));
-	
+
 	// read
 	pFile = fopen(aFilepath, "r");
 	if (!pFile)
@@ -1661,45 +1616,45 @@ int server_WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
 	}
-	
+
 	// read all lines
 	while(1)
 	{
 		ch = getc(pFile);
-		
+
 		// safety
 		if (chCount >= ARRAYSIZE(aLine) * ARRAYSIZE(aLine[0]) || lineIndex >= ARRAYSIZE(aLine))
 		{
 			break;
 		}
-		
+
 		if (ch == EOF)
 		{
 			ch = '\0';
 			eofReached = true;
 		}
-		
+
 		aLine[lineIndex][bufIndex] = ch;
 		bufIndex++;
-		
+
 		if (ch == '\n' || eofReached)
 		{
 			bufIndex = 0;
 			lineIndex++;
 		}
-		
+
 		if (eofReached)
 			break;
-		
+
 		chCount++;
 	}
-	
+
 	fclose(pFile);
 	line = Key;
-	
+
 	// change value
 	snprintf(aLine[line], ARRAYSIZE(aLine[0]), "%s\n", pValue);
-	
+
 	// write back
 	pFile = fopen(aFilepath, "w");
 	if (!pFile)
@@ -1709,16 +1664,16 @@ int server_WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
 	}
-	
+
 	for(i = 0; i < ARRAYSIZE(aLine); ++i)
 		fprintf(pFile, aLine[i]);
-	
+
 	fclose(pFile);
-	
+
 	return OK;
 }
 
-int server_ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char *pKey, size_t LenKey, char *pError, size_t LenError)
+int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char *pKey, size_t LenKey, char *pError, size_t LenError)
 {
 	FILE *pFile = 0;
 	char aFilepath[MAX_LEN_FILEPATH] = { 0 };
@@ -1731,10 +1686,10 @@ int server_ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char *p
 	int i = 0;
 	int eofReached = false;
 	char aBufTemp[NET_BUFFERSIZE] = { 0 };
-	
+
 	// filepath
 	server_MakeFilepath(FileType, pUsername, false, aFilepath, ARRAYSIZE(aFilepath));
-	
+
 	// read
 	pFile = fopen(aFilepath, "r");
 	if (!pFile)
@@ -1744,27 +1699,27 @@ int server_ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char *p
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
 	}
-	
+
 	// read all lines
 	while(1)
 	{
 		ch = getc(pFile);
-		
+
 		// safety
 		if (chCount >= ARRAYSIZE(aLine) * ARRAYSIZE(aLine[0]))
 		{
 			break;
 		}
-		
+
 		if (ch == EOF)
 		{
 			ch = '\0';
 			eofReached = true;
 		}
-		
+
 		aLine[lineIndex][bufIndex] = ch;
 		bufIndex++;
-		
+
 		if (ch == '\n' || eofReached)
 		{
 			if (lineIndex == Key)
@@ -1774,35 +1729,35 @@ int server_ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char *p
 				fclose(pFile);
 				return OK;
 			}
-			
+
 			bufIndex = 0;
 			lineIndex++;
 		}
-		
+
 		if (eofReached)
 			break;
-		
+
 		chCount++;
 	}
-	
+
 	fclose(pFile);
-	
+
 	Log("%s: Error, line %d not read", __FUNCTION__, Key);
 	snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error reading line %d", Key);
 	strncat(pError, aBufTemp, LenError);
-	
+
 	return ERROR;
 }
 
-int server_RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pError, size_t LenError)
+int CServer::RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pError, size_t LenError)
 {
 	int retval = 0;
 	char aFilepath[MAX_LEN_FILEPATH] = { 0 };
 	char aBufTemp[NET_BUFFERSIZE] = { 0 };
-	
+
 	// filepath
 	server_MakeFilepath(FileType, psSlotInfo->aUsername, false, aFilepath, ARRAYSIZE(aFilepath));
-	
+
 	// remove
 	retval = core_RemoveFile(aFilepath);
 	if (retval != OK)
@@ -1812,17 +1767,17 @@ int server_RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pError
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
 	}
-	
+
 	return OK;
 }
 
-int server_BanIP(in_addr_t IP, time_t Duration)
+int CServer::BanIP(in_addr_t IP, time_t Duration)
 {
 	int banSlotCount = 0;
 	int i = 0;
 	int amtSlots = ARRAYSIZE(gsServerInfo.aBannedIPs);
 	int freeIndex = -1;
-	
+
 	// check if a ban-slot is free
 	for(i = 0; i < amtSlots; ++i)
 	{
@@ -1831,27 +1786,27 @@ int server_BanIP(in_addr_t IP, time_t Duration)
 		else if (freeIndex == -1)
 			freeIndex = i;
 	}
-	
+
 	if (banSlotCount >= amtSlots)
 	{
 		Log("%s: All banned IP slots occupied (%d)", __FUNCTION__, amtSlots);
 		return ERROR;
 	}
-	
+
 	// ban IP
 	gsServerInfo.aBannedIPs[freeIndex] = IP;
 	gsServerInfo.aBanStartTime[freeIndex] = time(0);
 	gsServerInfo.aBanDuration[freeIndex] = Duration;
-	
+
 	return OK;
 }
 
-int server_CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime)
+int CServer::CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime)
 {
 	int i = 0;
 	time_t currentTime = time(0);
 	time_t timeRemaining = 0;
-	
+
 	for(i = 0; i < ARRAYSIZE(gsServerInfo.aBannedIPs); ++i)
 	{
 		if (psSlotInfo->clientIP == gsServerInfo.aBannedIPs[i])
@@ -1862,31 +1817,31 @@ int server_CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime)
 			return true;
 		}
 	}
-	
+
 	return false;
 }
 
-void server_CleanOldSession(S_SLOTINFO *psSlotInfo)
+void CServer::CleanOldSession(S_SLOTINFO *psSlotInfo)
 {
 	pthread_t clientConnection = psSlotInfo->thrClientConnection;
-	
+
 	// reset slot and close socket to free fd
 	server_CloseClientSocket(psSlotInfo);
 
 	// reset slot
 	memset(psSlotInfo, 0, sizeof(S_SLOTINFO));
-	
+
 	// cancel unused thread
 	pthread_cancel(clientConnection);// do not check return value, the thread could have been cancelled by itself from disconnecting client or banning
 }
 
-void server_CloseClientSocket(S_SLOTINFO *psSlotInfo)
+void CServer::CloseClientSocket(S_SLOTINFO *psSlotInfo)
 {
-	server_ResetSlot(psSlotInfo);
+	ResetSlot(psSlotInfo);
 	close(psSlotInfo->connfd);
 }
 
-void server_ResetSlot(S_SLOTINFO *psSlotInfo)
+void CServer::ResetSlot(S_SLOTINFO *psSlotInfo)
 {
 	memset(psSlotInfo->aUsername, 0, MAX_LEN_CREDENTIALS + 1);
 	psSlotInfo->loggedIn = false;
@@ -1895,13 +1850,13 @@ void server_ResetSlot(S_SLOTINFO *psSlotInfo)
 	psSlotInfo->banned = false;
 }
 
-int server_AddSuspiciousIP(in_addr_t IP)
+int CServer::AddSuspiciousIP(in_addr_t IP)
 {
 	int knownSlotIndex = -1;
 	int i = 0;
 	int amtSlots = ARRAYSIZE(gsServerInfo.aSuspiciousIPs);
 	int addedIP = false;
-	
+
 	// check if the IP is already known
 	for(i = 0; i < amtSlots; ++i)
 	{
@@ -1911,13 +1866,13 @@ int server_AddSuspiciousIP(in_addr_t IP)
 			break;
 		}
 	}
-	
+
 	// if slot was found, increase the sus counter
 	if (knownSlotIndex != -1)
 	{
 		gsServerInfo.aSuspiciousAttempts[knownSlotIndex]++;
 		addedIP = true;
-		
+
 		// refresh suspicious start time
 		gsServerInfo.aSuspiciousStartTime[knownSlotIndex] = time(0);
 	}
@@ -1935,24 +1890,24 @@ int server_AddSuspiciousIP(in_addr_t IP)
 			}
 		}
 	}
-	
+
 	// if no IP matched and all slots full, error
 	if (!addedIP)
 	{
 		Log("%s: All suspicious IP slots occupied (%d)", __FUNCTION__, amtSlots);
 		return ERROR;
 	}
-	
+
 	return OK;
 }
 
-void server_RemoveSuspiciousIP(in_addr_t IP)
+void CServer::RemoveSuspiciousIP(in_addr_t IP)
 {
 	int knownSlotIndex = -1;
 	int i = 0;
 	int amtSlots = ARRAYSIZE(gsServerInfo.aSuspiciousIPs);
 	int addedIP = false;
-	
+
 	// check if the IP is already known
 	for(i = 0; i < amtSlots; ++i)
 	{
@@ -1961,17 +1916,17 @@ void server_RemoveSuspiciousIP(in_addr_t IP)
 			gsServerInfo.aSuspiciousIPs[i] = 0;
 			gsServerInfo.aSuspiciousAttempts[i] = 0;
 			gsServerInfo.aSuspiciousStartTime[i] = 0;
-			
+
 			return;
 		}
 	}
 }
 
-int server_GetSuspiciousAttempts(in_addr_t IP)
+int CServer::GetSuspiciousAttempts(in_addr_t IP)
 {
 	int i = 0;
 	int attempts = 0;
-	
+
 	// check if IP in list
 	for(i = 0; i < ARRAYSIZE(gsServerInfo.aSuspiciousIPs); ++i)
 	{
@@ -1981,15 +1936,15 @@ int server_GetSuspiciousAttempts(in_addr_t IP)
 			break;
 		}
 	}
-	
+
 	return attempts;
 }
 
-struct in_addr server_GetIPStruct(in_addr_t IP)
+struct in_addr CServer::GetIPStruct(in_addr_t IP)
 {
 	struct in_addr sInAddr = { 0 };
-	
+
 	sInAddr.s_addr = IP;
-	
+
 	return sInAddr;
 }

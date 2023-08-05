@@ -9,39 +9,55 @@
 	With "gpio readall" you can see the wiringPi numbering scheme
 */
 
-void hardware_Init()
+void CHardware::Init()
 {
 	int i = 0;
-	
+
 	wiringPiSetup();
-	
+
 	// set all pins as output
 	for (i = 0; i < 32; ++i)
 	{
 		// skip non-gpio and i2c-1 pins
-		if (!server_IsGpioValid(i))
+		if (!IsGpioValid(i))
 			continue;
-		
+
 		pinMode(i, OUTPUT);
 	}
 }
 
-void hardware_Set(int Pin, int State)
+void CHardware::Set(int Pin, int State)
 {
 	digitalWrite(Pin, State);
 }
 
-void hardware_Clear()
+void CHardware::Clear()
 {
 	int i = 0;
-	
+
 	// clear all pins
 	for (i = 0; i < 32; ++i)
 	{
 		// skip non-gpio and i2c-1 pins
-		if (!server_IsGpioValid(i))
+		if (!IsGpioValid(i))
 			continue;
-		
-		hardware_Set(i, LOW);
+
+		Set(i, LOW);
 	}
+}
+
+bool CHardware::IsGpioValid(int Number)
+{
+	if (Number < 0 || (Number > 7 && Number < 10) || (Number > 16 && Number < 21) || Number > 31)
+		return false;
+
+	return true;
+}
+
+bool CHardware::IsMosfetValid(int Number)
+{
+	if (Number < 1 || Number > 8)
+		return false;
+
+	return true;
 }
