@@ -13,10 +13,10 @@ CLog::CLog(const char *pFolder, const char *pFile)
 {
 	int retval = 0;
 
+	memset(m_aLogFilename, 0, ARRAYSIZE(m_aLogFilename));
+
 	// combine folder and file names
 	snprintf(m_aLogFilename, ARRAYSIZE(m_aLogFilename), "%s/%s", pFolder, pFile);
-
-	printf("\nCLog::CLog: <%s>\n", m_aLogFilename);
 
 	// make directory
 	retval = CCore::Mkdir(pFolder);
@@ -29,9 +29,9 @@ CLog::CLog(const char *pFolder, const char *pFile)
 
 void CLog::Log(const char *pMessage, ...)
 {
+	printf("\n\t<%s> <%s>\n", m_aLogFilename, pMessage);
 	char buffer[CLOG_MSG_MAXLEN] = {0};
 	va_list argptr;
-
 	va_start(argptr, pMessage);
 	vsprintf(buffer, pMessage, argptr);
 	printf("%s\n", buffer);

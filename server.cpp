@@ -93,11 +93,11 @@ int CServer::Run()
 	int sockOptValue = 0;
 	S_SLOTINFO *psSlotInfo = 0;
 
-	printf("\nwaiting...\n");
-	m_pMainlogic->m_pLog->Log("NICE NICE NICE NICE");
-	usleep(1000000);
-	m_pMainlogic->m_pLog->Log("%s: NICE NICE NICE NICE", __FUNCTION__);
-	printf("\nenterint...\n");
+	while (1)
+	{
+		printf("\n...\n");
+		usleep(1000000);
+	}
 
 	// make process ignore SIGPIPE signal, so it will not exit when writing to disconnected socket
 	sigAction.sa_handler = SIG_IGN;

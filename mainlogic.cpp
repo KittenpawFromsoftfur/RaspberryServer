@@ -7,8 +7,8 @@ CMainlogic::CMainlogic()
     int m_aThreadStatus = {0};
     bool m_DoExitApplication = false;
 
-    CServer *m_pServer = new CServer(this);
     CLog *m_pLog = new CLog(FOLDERPATH_LOG, LOG_NAME);
+    CServer *m_pServer = new CServer(this);
 }
 
 CMainlogic::~CMainlogic()
@@ -21,10 +21,6 @@ int CMainlogic::EntryPoint()
 {
     int retval = 0;
     int hasError = false;
-
-    printf("\nhelloing...\n");
-    m_pLog->Log("hello");
-    usleep(1000000);
 
     // run server thread
     SetThreadStatus(THR_SERVERRUN, OK);
@@ -88,6 +84,8 @@ int CMainlogic::Keyboardcontrol()
 
         if (ch == CMAINLOGIC_KBDKEY_ENDPROGRAM)
             RequestApplicationExit();
+        else if (ch == 'a')
+            m_pLog->Log("hai sodesu");
 
         usleep(CMAINLOGIC_DELAY_KEYBOARDCONTROLLOOP);
     }

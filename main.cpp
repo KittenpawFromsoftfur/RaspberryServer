@@ -2,6 +2,21 @@
 #include "mainlogic.h"
 
 /* TODO
+	LASTSTOP
+		find bug
+		log.cpp and keyboardcontrol clean printsf
+		throw exception when mkdir log does not work
+		resource deallocation for mainlogic with their pointers usw...
+		now continue with general \t
+
+
+
+
+
+
+
+
+
 	GENERAL
 			log thema wie oft wird constructor aufgerufen
 			main konstruktor machen

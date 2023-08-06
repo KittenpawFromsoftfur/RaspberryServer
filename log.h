@@ -11,9 +11,8 @@ public:
 	CLog(const char *pFolder, const char *pLogFile);
 	void Log(const char *pMessage, ...);
 	const char *GetLogFilename();
+	char m_aLogFilename[CLOG_PATH_MAXLEN];
 
 private:
 	int WriteToFile(const char *pMessage);
-
-	char m_aLogFilename[CLOG_PATH_MAXLEN];
 };
