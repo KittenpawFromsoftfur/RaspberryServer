@@ -827,9 +827,9 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			else if (CCore::StringCompareNocase(aaToken[1], "all", ARRAYSIZE(aaToken[0])) == 0)
 			{
 				// safety measure in case we ever change the accounts / defines directory to anywhere that is not our program directory
-				if (strstr(CSERVER_FOLDERPATH_ACCOUNTS, CSERVER_FOLDERPATH_FILESTASH_MINIMUM) == 0 || strstr(CSERVER_FOLDERPATH_DEFINES_GPIO, CSERVER_FOLDERPATH_FILESTASH_MINIMUM) == 0 || strstr(CSERVER_FOLDERPATH_DEFINES_MOSFET, CSERVER_FOLDERPATH_FILESTASH_MINIMUM) == 0)
+				if (strstr(CSERVER_FOLDERPATH_ACCOUNTS, FILEPATH_BASE) == 0 || strstr(CSERVER_FOLDERPATH_DEFINES_GPIO, FILEPATH_BASE) == 0 || strstr(CSERVER_FOLDERPATH_DEFINES_MOSFET, FILEPATH_BASE) == 0)
 				{
-					m_pLog->Log("Slot[%d] Danger! Folder path for accounts or defines are not according to the minimum required filestash folder path '%s', could delete important files", psParams->slotIndex, CSERVER_FOLDERPATH_FILESTASH_MINIMUM);
+					m_pLog->Log("Slot[%d] Danger! Folder path for accounts or defines are not inside the base folder path '%s', important files could be deleted", psParams->slotIndex, FILEPATH_BASE);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Unable to delete all files", CSERVER_FOLDERPATH_ACCOUNTS);
 					strncat(pResp, aBufTemp, LenResp);
 				}

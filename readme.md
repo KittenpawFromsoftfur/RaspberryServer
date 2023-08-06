@@ -42,7 +42,6 @@ The following is the output of the 'help' function for a locked account.
 > echo... The echo which echoes. Usage: 'echo'.
 > exit... Closes your connection. Usage: 'exit'.
 > ******************
-
 ```
 
 # Raspberry setup
@@ -50,7 +49,10 @@ The following is the output of the 'help' function for a locked account.
 ```
 Enable SSH: Yes
 
-Some username-dependend filepaths are hardcoded. Either use the username "black" or change the filepaths in the code.
+The program has username-dependend filepaths. Either use the username "black" or modify the following:
+* main.h --> "FILEPATH_BASE ..."
+* xserver.service --> "ExecStart=..."
+* build --> "chmod ..."
 ```
 
 ## Install wiringPi

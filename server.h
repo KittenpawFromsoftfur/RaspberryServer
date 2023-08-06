@@ -16,10 +16,9 @@
 #define CSERVER_MAX_LEN_LISTENQUEUE 10
 #define CSERVER_MAX_SLOTS 10
 
-#define CSERVER_FOLDERPATH_FILESTASH_MINIMUM "/home/black/server/"
-#define CSERVER_FOLDERPATH_ACCOUNTS "/home/black/server/accounts"
-#define CSERVER_FOLDERPATH_DEFINES_GPIO "/home/black/server/defines_gpio"
-#define CSERVER_FOLDERPATH_DEFINES_MOSFET "/home/black/server/defines_mosfet"
+#define CSERVER_FOLDERPATH_ACCOUNTS FILEPATH_BASE "/accounts"
+#define CSERVER_FOLDERPATH_DEFINES_GPIO FILEPATH_BASE "/defines_gpio"
+#define CSERVER_FOLDERPATH_DEFINES_MOSFET FILEPATH_BASE "/defines_mosfet "
 
 #define CSERVER_RESPONSE_PREFIX "> "
 #define CSERVER_COMMAND_STRING_HELP "help"

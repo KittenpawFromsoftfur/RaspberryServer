@@ -5,7 +5,8 @@
 #define MAX_LEN_FILENAME 256
 #define MAX_LEN_FILEPATH 256
 
-#define FOLDERPATH_LOG "/home/black/server/log"
+#define FILEPATH_BASE "home/black/server"
+#define FOLDERPATH_LOG FILEPATH_BASE "/log"
 #define LOG_NAME "_log.txt"
 
 #define DELAY_MAINLOOP 100000

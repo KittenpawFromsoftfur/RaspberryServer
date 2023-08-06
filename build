@@ -1,5 +1,5 @@
 rm xserver
 clear
 gcc core.cpp server.cpp log.cpp hardware.cpp main.cpp -o xserver -lpthread -lwiringPi -lstdc++
-chmod +777 -R ../server/
+chmod +777 -R ../home/black/server/
 ./xserver
