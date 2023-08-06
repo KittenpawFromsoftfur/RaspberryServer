@@ -1,14 +1,15 @@
 #pragma once
 
-#include <pthread.h>
 #include <arpa/inet.h>
 #include <time.h>
+#include <thread>
 
 #include "core.h"
+#include "main.h"
 #include "log.h"
+#include "hardware.h"
 
 // server
-#define CSERVER_NET_IP "127.0.0.1"
 #define CSERVER_NET_PORT 8000
 #define CSERVER_NET_BUFFERSIZE 2048
 
@@ -61,7 +62,7 @@
 #define CSERVER_MAX_BANNED_IPS 100
 #define CSERVER_MAX_FAILED_LOGINS 3
 #define CSERVER_IP_BAN_DURATION_FAILEDLOGINS TIME_TO_SECONDS_HMS(0, 5, 0)
-#define CSERVER_MAX_SUSPICIOUS_IPS MAX_BANNED_IPS
+#define CSERVER_MAX_SUSPICIOUS_IPS CSERVER_MAX_BANNED_IPS
 #define CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS (CSERVER_MAX_FAILED_LOGINS * 2) // Prevents abuse of failed login counter reset when reconnecting. Forgives clumsiness but also bans abusers harder.
 #define CSERVER_IP_BAN_DURATION_SUSPICIOUS TIME_TO_SECONDS_HMS(0, 30, 0)
 #define CSERVER_SUSPICIOUS_FALLOFF_TIME TIME_TO_SECONDS_HMS(0, 30, 0) // Is also reset when a ban ends or a login with an activated account succeeds
@@ -76,7 +77,7 @@
 #define CSERVER_COM_ACTIVATE_RESPONSE "Quack"
 
 // enums
-typedef enum
+enum E_COMMANDS
 {
 	COM_HELP,
 	COM_ACTIVATEACCOUNT,
@@ -95,29 +96,29 @@ typedef enum
 	COM_MOSCLEAR,
 	COM_ECHO,
 	COM_EXIT,
-} E_COMMANDS;
+};
 
-typedef enum
+enum E_ACCOUNTACTIONS
 {
 	ACCACTION_REGISTER,
 	ACCACTION_LOGIN,
 	ACCACTION_LOGOUT,
-} E_ACCOUNTACTIONS;
+};
 
-typedef enum
+enum
 {
 	ACCKEY_USERNAME,
 	ACCKEY_PASSWORD,
 	ACCKEY_ACTIVATED,
-} E_ACCOUNTKEYS;
+};
 
-typedef enum
+enum E_FILETYPES
 {
 	FILETYPE_ACCOUNT,
 	FILETYPE_DEFINES_GPIO,
 	FILETYPE_DEFINES_MOSFET,
 	FILETYPE_LOG,
-} E_FILETYPES;
+};
 
 // structs
 typedef struct
@@ -139,7 +140,7 @@ typedef struct
 typedef struct
 {
 	int connfd;
-	pthread_t thrClientConnection;
+	std::thread thrClientConnection;
 	S_PARAMS_CLIENTCONNECTION threadParamsClientConnection;
 	in_addr_t clientIP;
 	char aUsername[CSERVER_MAX_LEN_USERFILES];
@@ -153,7 +154,7 @@ typedef struct
 typedef struct
 {
 	int listenfd;
-	pthread_t thrUpdate;
+	std::thread thrUpdate;
 	in_addr_t aBannedIPs[CSERVER_MAX_BANNED_IPS];
 	time_t aBanStartTime[CSERVER_MAX_BANNED_IPS];
 	time_t aBanDuration[CSERVER_MAX_BANNED_IPS];
@@ -165,15 +166,18 @@ typedef struct
 class CServer
 {
 public:
-	CServer(CLog *pcLog);
-	void *ThrfRun(void *pArgs);
-	void *ThrfOnExitApplication(void *pArgs);
+	// members
+	CServer(S_MAIN *psMain, CLog *pLog);
+	~CServer();
+	int ThrfRun();
+	int OnExitApplication();
 
 private:
-	void *ThrfClientConnection(void *pArgs);
-	void *ThrfUpdate(void *pArgs);
+	// methods
+	int ThrfClientConnection(void *pArgs);
+	int ThrfUpdate();
 	int ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, char *pResp, size_t LenResp);
-	void EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[MAX_TOKENS][MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
+	void EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[CSERVER_MAX_TOKENS][CSERVER_MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
 	int IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags);
 	int IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags);
 	int ResetHardware();
@@ -193,6 +197,10 @@ private:
 	int GetSuspiciousAttempts(in_addr_t IP);
 	struct in_addr GetIPStruct(in_addr_t IP);
 
-	CLog *m_pcLog;
-	CHardware m_cHardware;
+	// members
+	S_MAIN *m_psMain;
+	CLog *m_pLog;
+	CHardware m_Hardware;
+	S_SERVERINFO m_sServerInfo;
+	S_SLOTINFO m_asSlotInfo[CSERVER_MAX_SLOTS];
 };

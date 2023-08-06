@@ -2,8 +2,6 @@
 #include <stdlib.h>
 
 #include "core.h"
-#include "log.h"
-#include "server.h"
 #include "hardware.h"
 
 /* NOTE
@@ -43,14 +41,14 @@ void CHardware::ClearGpio()
 		if (!IsGpioValid(i))
 			continue;
 
-		Set(i, LOW);
+		SetGpio(i, LOW);
 	}
 }
 
 int CHardware::SetMosfet(int Pin, int State)
 {
 	int retval = 0;
-	char aSystemString[CHARDWARE_MAX_LEN_SYSTEMCOMMAND] = { 0 };
+	char aSystemString[CHARDWARE_MAX_LEN_SYSTEMCOMMAND] = {0};
 
 	snprintf(aSystemString, ARRAYSIZE(aSystemString), "8mosind 0 write %d %s", Pin, State == 1 ? "on" : "off");
 

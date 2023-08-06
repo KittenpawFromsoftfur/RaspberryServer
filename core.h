@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <thread>
 
 // value defines
 #define ERROR -1
@@ -35,6 +36,7 @@ public:
     static int IsLetter(char Char);
     static int StringCompareNocase(const char *pSource, const char *pDest, size_t Len);
     static void StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const char *pIgnore);
+    static int DetachThreadSafely(std::thread *pThread);
     int MeasureStart();
     double MeasureStop(int Print);
 

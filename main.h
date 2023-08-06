@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pthread.h>
+#include <thread>
 
 #define MAX_LEN_FILENAME 256
 #define MAX_LEN_FILEPATH 256
@@ -17,16 +17,16 @@ typedef enum
 	THR_SERVERRUN,
 	THR_KEYBOARDCONTROL,
 	AMOUNT_THREADS,
-}E_THREADS;
+} E_THREADS;
 
 // structs
 typedef struct
 {
 	char aFilepathLog[MAX_LEN_FILEPATH];
-	pthread_t aThread[AMOUNT_THREADS];
+	std::thread aThread[AMOUNT_THREADS];
 	int aThreadStatus[AMOUNT_THREADS];
 	int exitApplication;
-}S_MAIN;
+} S_MAIN;
 
 // public variables
 extern S_MAIN gsMain;

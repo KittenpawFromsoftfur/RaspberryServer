@@ -11,14 +11,14 @@
 
 CCore::CCore()
 {
-	m_sTimeStart = { 0 };
+	m_sTimeStart = {0};
 }
 
 int CCore::StringCompareNocase(const char *pSource, const char *pDest, size_t Len)
 {
 	signed char diff = 0;
 
-	for(int i = 0; i < Len; ++i)
+	for (int i = 0; i < Len; ++i)
 	{
 		if (!pSource[i] && !pDest[i])
 			break;
@@ -38,7 +38,7 @@ void CCore::StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const
 	int ignLen = strnlen(pIgnore, CCORE_MAXLEN_STRINGIGNORE);
 	int ignore = false;
 
-	for(int i = 0; i < Len; ++i)
+	for (int i = 0; i < Len; ++i)
 	{
 		if (!pSource[i])
 			break;
@@ -46,7 +46,7 @@ void CCore::StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const
 		// check if next source char should be ignored
 		ignore = false;
 
-		for(int ign = 0; ign < ignLen; ++ign)
+		for (int ign = 0; ign < ignLen; ++ign)
 		{
 			if (pSource[i] == pIgnore[ign])
 			{
@@ -72,7 +72,7 @@ void CCore::StrRemove(char *pSource, size_t Len, const char *pRem)
 	int remLen = strnlen(pRem, Len);
 	int remove = false;
 
-	while(1)
+	while (1)
 	{
 		if (!pSource[i])
 			break;
@@ -80,7 +80,7 @@ void CCore::StrRemove(char *pSource, size_t Len, const char *pRem)
 		// check if next source char can be removed
 		remove = false;
 
-		for(int rem = 0; rem < remLen; ++rem)
+		for (int rem = 0; rem < remLen; ++rem)
 		{
 			if (pSource[i] == pRem[rem])
 			{
@@ -91,7 +91,7 @@ void CCore::StrRemove(char *pSource, size_t Len, const char *pRem)
 
 		if (remove)
 		{
-			for(int index = i; index < Len - 1; ++index)
+			for (int index = i; index < Len - 1; ++index)
 			{
 				pSource[index] = pSource[index + 1];
 
@@ -111,7 +111,7 @@ void CCore::StrRemove(char *pSource, size_t Len, const char *pRem)
 
 void CCore::StringToUpper(char *pSource, size_t Len)
 {
-	for(int i = 0; i < Len; ++i)
+	for (int i = 0; i < Len; ++i)
 	{
 		if (!pSource[i])
 			break;
@@ -122,7 +122,7 @@ void CCore::StringToUpper(char *pSource, size_t Len)
 
 void CCore::StringToLower(char *pSource, size_t Len)
 {
-	for(int i = 0; i < Len; ++i)
+	for (int i = 0; i < Len; ++i)
 	{
 		if (!pSource[i])
 			break;
@@ -134,7 +134,7 @@ void CCore::StringToLower(char *pSource, size_t Len)
 // makes a dir if not yet existing
 int CCore::Mkdir(const char *pPath)
 {
-	struct stat sStat = { 0 };
+	struct stat sStat = {0};
 	int retval = 0;
 
 	// create account and define folder paths
@@ -162,7 +162,7 @@ int CCore::CheckFileExists(const char *pDirname, const char *pFilename, size_t L
 		return ERROR;
 
 	// read files
-	while(1)
+	while (1)
 	{
 		psDirent = readdir(pDir);
 
@@ -193,7 +193,7 @@ int CCore::CountFilesDirectory(const char *pDirname)
 		return ERROR;
 
 	// read files
-	while(1)
+	while (1)
 	{
 		psDirent = readdir(pDir);
 
@@ -217,7 +217,7 @@ int CCore::CheckStringAscii(const char *pString, size_t Len)
 	int i = 0;
 	char ch = 0;
 
-	for(i = 0; i < Len; ++i)
+	for (i = 0; i < Len; ++i)
 	{
 		ch = pString[i];
 
@@ -249,7 +249,7 @@ int CCore::RemoveFilesDirectory(const char *pDirname)
 	DIR *pDir = 0;
 	struct dirent *psDirent = 0;
 	int retval = 0;
-	char aFilepath[CCORE_MAXLEN_FILEPATH] = { 0 };
+	char aFilepath[CCORE_MAXLEN_FILEPATH] = {0};
 
 	// check if directory exists
 	pDir = opendir(pDirname);
@@ -257,7 +257,7 @@ int CCore::RemoveFilesDirectory(const char *pDirname)
 		return ERROR;
 
 	// read files
-	while(1)
+	while (1)
 	{
 		psDirent = readdir(pDir);
 
@@ -270,7 +270,7 @@ int CCore::RemoveFilesDirectory(const char *pDirname)
 			continue;
 
 		// make filepath
-		memset(aFilepath, 0, ARRAYSIZE(aFilepath));// zero as good measure
+		memset(aFilepath, 0, ARRAYSIZE(aFilepath)); // zero as good measure
 		snprintf(aFilepath, ARRAYSIZE(aFilepath), "%s/%s", pDirname, psDirent->d_name);
 
 		// remove file
@@ -294,9 +294,20 @@ int CCore::IsLetter(char Char)
 	return true;
 }
 
+int CCore::DetachThreadSafely(std::thread *pThread)
+{
+	if (!pThread)
+		return ERROR;
+
+	if (pThread->joinable())
+		pThread->detach();
+
+	return OK;
+}
+
 int CCore::MeasureStart()
 {
-	if(clock_gettime(CLOCK_REALTIME, &m_sTimeStart) != 0)
+	if (clock_gettime(CLOCK_REALTIME, &m_sTimeStart) != 0)
 		return ERROR;
 
 	return OK;
@@ -304,7 +315,7 @@ int CCore::MeasureStart()
 
 double CCore::MeasureStop(int Print)
 {
-	struct timespec sTimeStop = { 0 };
+	struct timespec sTimeStop = {0};
 	double diff = 0;
 	int seconds = 0;
 	int millies = 0;

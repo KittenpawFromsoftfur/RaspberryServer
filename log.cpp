@@ -10,19 +10,19 @@
 // if the log has to be placed in a non-existing folder, that folder has to be created first, or the logging will fail
 CLog::CLog(const char *pLogFilename)
 {
-	strncpy(m_aLogFilename, pLogFilename, ARRAYSIZE(m_aLogFilename);
+	strncpy(m_aLogFilename, pLogFilename, ARRAYSIZE(m_aLogFilename));
 }
 
 void CLog::Log(const char *pMessage, ...)
 {
-	char buffer[LOG_MSG_MAXLEN] = { 0 };
-    va_list argptr;
+	char buffer[CLOG_MSG_MAXLEN] = {0};
+	va_list argptr;
 
-    va_start(argptr, pMessage);
+	va_start(argptr, pMessage);
 	vsprintf(buffer, pMessage, argptr);
 	printf("%s\n", buffer);
 	WriteToFile(buffer);
-    va_end(argptr);
+	va_end(argptr);
 }
 
 int CLog::WriteToFile(const char *pMessage)
