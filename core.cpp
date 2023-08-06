@@ -14,6 +14,141 @@ CCore::CCore()
 	m_sTimeStart = {0};
 }
 
+// makes a dir if not yet existing
+int CCore::Mkdir(const char *pPath)
+{
+	struct stat sStat = {0};
+	int retval = 0;
+
+	// create account and define folder paths
+	retval = stat(pPath, &sStat);
+	if (retval != 0)
+	{
+		// create folders
+		retval = mkdir(pPath, 0777);
+		if (retval != 0)
+			return ERROR;
+	}
+
+	return OK;
+}
+
+int CCore::RemoveFile(const char *pFilename)
+{
+	int retval = 0;
+
+	retval = remove(pFilename);
+	if (retval != 0)
+		return ERROR;
+
+	return OK;
+}
+
+// removes all files in a directory
+int CCore::RemoveFilesDirectory(const char *pDirname)
+{
+	DIR *pDir = 0;
+	struct dirent *psDirent = 0;
+	int retval = 0;
+	char aFilepath[CCORE_MAXLEN_FILEPATH] = {0};
+
+	// check if directory exists
+	pDir = opendir(pDirname);
+	if (!pDir)
+		return ERROR;
+
+	// read files
+	while (1)
+	{
+		psDirent = readdir(pDir);
+
+		if (!psDirent)
+			break;
+
+		// skip dir names
+		if (strncmp(psDirent->d_name, ".", 2) == 0 ||
+			strncmp(psDirent->d_name, "..", 3) == 0)
+			continue;
+
+		// make filepath
+		memset(aFilepath, 0, ARRAYSIZE(aFilepath)); // zero as good measure
+		snprintf(aFilepath, ARRAYSIZE(aFilepath), "%s/%s", pDirname, psDirent->d_name);
+
+		// remove file
+		retval = RemoveFile(aFilepath);
+		if (retval != OK)
+		{
+			closedir(pDir);
+			return ERROR;
+		}
+	}
+
+	closedir(pDir);
+	return OK;
+}
+
+// true=exists, false=not-exist, ERROR=error
+int CCore::CountFilesDirectory(const char *pDirname)
+{
+	DIR *pDir = 0;
+	struct dirent *psDirent = 0;
+	int amount = 0;
+
+	// check if directory exists
+	pDir = opendir(pDirname);
+	if (!pDir)
+		return ERROR;
+
+	// read files
+	while (1)
+	{
+		psDirent = readdir(pDir);
+
+		if (!psDirent)
+			break;
+
+		// skip dir names
+		if (strncmp(psDirent->d_name, ".", 2) == 0 ||
+			strncmp(psDirent->d_name, "..", 3) == 0)
+			continue;
+
+		amount++;
+	}
+
+	closedir(pDir);
+	return amount;
+}
+
+// true=exists, false=does not exist, ERROR=error
+int CCore::CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename)
+{
+	DIR *pDir = 0;
+	struct dirent *psDirent = 0;
+
+	// check if already existing
+	pDir = opendir(pDirname);
+	if (!pDir)
+		return ERROR;
+
+	// read files
+	while (1)
+	{
+		psDirent = readdir(pDir);
+
+		if (!psDirent)
+			break;
+
+		if (strncmp(psDirent->d_name, pFilename, LenFilename) == 0)
+		{
+			closedir(pDir);
+			return true;
+		}
+	}
+
+	closedir(pDir);
+	return false;
+}
+
 int CCore::StringCompareNocase(const char *pSource, const char *pDest, size_t Len)
 {
 	signed char diff = 0;
@@ -66,7 +201,7 @@ void CCore::StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const
 	}
 }
 
-void CCore::StrRemove(char *pSource, size_t Len, const char *pRem)
+void CCore::StringRemove(char *pSource, size_t Len, const char *pRem)
 {
 	int i = 0;
 	int remLen = strnlen(pRem, Len);
@@ -131,87 +266,6 @@ void CCore::StringToLower(char *pSource, size_t Len)
 	}
 }
 
-// makes a dir if not yet existing
-int CCore::Mkdir(const char *pPath)
-{
-	struct stat sStat = {0};
-	int retval = 0;
-
-	// create account and define folder paths
-	retval = stat(pPath, &sStat);
-	if (retval != 0)
-	{
-		// create folders
-		retval = mkdir(pPath, 0777);
-		if (retval != 0)
-			return ERROR;
-	}
-
-	return OK;
-}
-
-// true=exists, false=does not exist, ERROR=error
-int CCore::CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename)
-{
-	DIR *pDir = 0;
-	struct dirent *psDirent = 0;
-
-	// check if already existing
-	pDir = opendir(pDirname);
-	if (!pDir)
-		return ERROR;
-
-	// read files
-	while (1)
-	{
-		psDirent = readdir(pDir);
-
-		if (!psDirent)
-			break;
-
-		if (strncmp(psDirent->d_name, pFilename, LenFilename) == 0)
-		{
-			closedir(pDir);
-			return true;
-		}
-	}
-
-	closedir(pDir);
-	return false;
-}
-
-// true=exists, false=not-exist, ERROR=error
-int CCore::CountFilesDirectory(const char *pDirname)
-{
-	DIR *pDir = 0;
-	struct dirent *psDirent = 0;
-	int amount = 0;
-
-	// check if directory exists
-	pDir = opendir(pDirname);
-	if (!pDir)
-		return ERROR;
-
-	// read files
-	while (1)
-	{
-		psDirent = readdir(pDir);
-
-		if (!psDirent)
-			break;
-
-		// skip dir names
-		if (strncmp(psDirent->d_name, ".", 2) == 0 ||
-			strncmp(psDirent->d_name, "..", 3) == 0)
-			continue;
-
-		amount++;
-	}
-
-	closedir(pDir);
-	return amount;
-}
-
 int CCore::CheckStringAscii(const char *pString, size_t Len)
 {
 	int i = 0;
@@ -230,60 +284,6 @@ int CCore::CheckStringAscii(const char *pString, size_t Len)
 	}
 
 	return true;
-}
-
-int CCore::RemoveFile(const char *pFilename)
-{
-	int retval = 0;
-
-	retval = remove(pFilename);
-	if (retval != 0)
-		return ERROR;
-
-	return OK;
-}
-
-// removes all files in a directory
-int CCore::RemoveFilesDirectory(const char *pDirname)
-{
-	DIR *pDir = 0;
-	struct dirent *psDirent = 0;
-	int retval = 0;
-	char aFilepath[CCORE_MAXLEN_FILEPATH] = {0};
-
-	// check if directory exists
-	pDir = opendir(pDirname);
-	if (!pDir)
-		return ERROR;
-
-	// read files
-	while (1)
-	{
-		psDirent = readdir(pDir);
-
-		if (!psDirent)
-			break;
-
-		// skip dir names
-		if (strncmp(psDirent->d_name, ".", 2) == 0 ||
-			strncmp(psDirent->d_name, "..", 3) == 0)
-			continue;
-
-		// make filepath
-		memset(aFilepath, 0, ARRAYSIZE(aFilepath)); // zero as good measure
-		snprintf(aFilepath, ARRAYSIZE(aFilepath), "%s/%s", pDirname, psDirent->d_name);
-
-		// remove file
-		retval = RemoveFile(aFilepath);
-		if (retval != OK)
-		{
-			closedir(pDir);
-			return ERROR;
-		}
-	}
-
-	closedir(pDir);
-	return OK;
 }
 
 int CCore::IsLetter(char Char)

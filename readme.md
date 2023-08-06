@@ -49,7 +49,7 @@ The following is the output of the 'help' function for a locked account.
 ```
 Enable SSH: Yes
 
-The program has username-dependend filepaths. Either use the username "black" or modify the following:
+The program has username-dependend filepaths. Either use the username "black" or modify the following files:
 * main.h --> "FILEPATH_BASE ..."
 * xserver.service --> "ExecStart=..."
 * build --> "chmod ..."

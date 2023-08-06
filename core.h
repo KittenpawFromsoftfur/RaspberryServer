@@ -24,18 +24,18 @@ class CCore
 {
 public:
     CCore();
-    static void StrRemove(char *pSource, size_t Len, const char *pRem);
-    static void StringToUpper(char *pSource, size_t Len);
-    static void StringToLower(char *pSource, size_t Len);
     static int Mkdir(const char *pPath);
-    static int CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename);
-    static int CountFilesDirectory(const char *pDirname);
-    static int CheckStringAscii(const char *pString, size_t Len);
     static int RemoveFile(const char *pFilename);
     static int RemoveFilesDirectory(const char *pDirname);
-    static int IsLetter(char Char);
+    static int CountFilesDirectory(const char *pDirname);
+    static int CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename);
     static int StringCompareNocase(const char *pSource, const char *pDest, size_t Len);
     static void StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const char *pIgnore);
+    static void StringRemove(char *pSource, size_t Len, const char *pRem);
+    static void StringToUpper(char *pSource, size_t Len);
+    static void StringToLower(char *pSource, size_t Len);
+    static int CheckStringAscii(const char *pString, size_t Len);
+    static int IsLetter(char Char);
     static int DetachThreadSafely(std::thread *pThread);
     int MeasureStart();
     double MeasureStop(int Print);

@@ -18,7 +18,7 @@
 
 #define CSERVER_FOLDERPATH_ACCOUNTS FILEPATH_BASE "/accounts"
 #define CSERVER_FOLDERPATH_DEFINES_GPIO FILEPATH_BASE "/defines_gpio"
-#define CSERVER_FOLDERPATH_DEFINES_MOSFET FILEPATH_BASE "/defines_mosfet "
+#define CSERVER_FOLDERPATH_DEFINES_MOSFET FILEPATH_BASE "/defines_mosfet"
 
 #define CSERVER_RESPONSE_PREFIX "> "
 #define CSERVER_COMMAND_STRING_HELP "help"
@@ -27,8 +27,8 @@
 
 #define CSERVER_MAX_LEN_ECHO 128
 
-#define CSERVER_DELAY_RECEIVE 10000
-#define CSERVER_DELAY_UPDATELOOP 1000000
+#define CSERVER_DELAY_RECEIVE 10000		 // 10ms
+#define CSERVER_DELAY_UPDATELOOP 1000000 // 1s
 
 #define CSERVER_TIMEOUT_CLIENTCONNECTION_READ 5 // s
 
@@ -168,13 +168,13 @@ public:
 	// members
 	CServer(S_MAIN *psMain, CLog *pLog);
 	~CServer();
-	int ThrfRun();
+	int Run();
 	int OnExitApplication();
 
 private:
 	// methods
-	int ThrfClientConnection(void *pArgs);
-	int ThrfUpdate();
+	int ClientConnection(S_PARAMS_CLIENTCONNECTION *psParams);
+	int Update();
 	int ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, char *pResp, size_t LenResp);
 	void EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[CSERVER_MAX_TOKENS][CSERVER_MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
 	int IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags);

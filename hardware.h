@@ -6,11 +6,11 @@
 class CHardware
 {
 public:
-    void Init();
+    CHardware();
     void SetGpio(int Pin, int State);
-    void ClearGpio();
-    bool IsGpioValid(int Number);
     int SetMosfet(int Pin, int State);
+    void ClearGpio();
     int ClearMosfet();
+    bool IsGpioValid(int Number);
     bool IsMosfetValid(int Number);
 };

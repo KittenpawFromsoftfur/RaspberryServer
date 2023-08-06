@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <sys/select.h>
+#include <signal.h>
 
 #include "server.h"
 #include "core.h"
@@ -80,10 +81,11 @@ CServer::~CServer()
 		CCore::DetachThreadSafely(&m_asSlotInfo[i].thrClientConnection);
 }
 
-int CServer::ThrfRun()
+int CServer::Run()
 {
 	int retval = 0;
 	int connfdCurrent = 0;
+	struct sigaction sigAction = {0};
 	struct sockaddr_in sockaddr_current = {0};
 	socklen_t socklenCurrent = 0;
 	struct sockaddr_in serv_addr = {0};
@@ -92,6 +94,16 @@ int CServer::ThrfRun()
 	int sockOptValue = 0;
 	S_SLOTINFO *psSlotInfo = 0;
 
+	// make process ignore SIGPIPE signal, so it will not exit when writing to disconnected socket
+	sigAction.sa_handler = SIG_IGN;
+	retval = sigaction(SIGPIPE, &sigAction, NULL);
+	if (retval != 0)
+	{
+		m_pLog->Log("%s: Failed to ignore the SIGPIPE signal", __FUNCTION__);
+		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		return ERROR;
+	}
+
 	// reset hardware
 	retval = ResetHardware();
 	if (retval != OK)
@@ -99,9 +111,6 @@ int CServer::ThrfRun()
 		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
 		return ERROR;
 	}
-
-	// initialize hardware
-	m_Hardware.Init();
 
 	// randomize for echo
 	srand(time(0));
@@ -133,8 +142,8 @@ int CServer::ThrfRun()
 		return ERROR;
 	}
 
-	// create update thread
-	m_sServerInfo.thrUpdate = std::thread(&CServer::ThrfUpdate, this);
+	// spawn update thread
+	m_sServerInfo.thrUpdate = std::thread(&CServer::Update, this);
 
 	// create server socket
 	m_sServerInfo.listenfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -243,7 +252,7 @@ int CServer::ThrfRun()
 		}
 
 		// client socket option: keepalive idle time
-		sockOptValue = 10;
+		sockOptValue = 10; // s
 		retval = setsockopt(connfdCurrent, IPPROTO_TCP, TCP_KEEPIDLE, &sockOptValue, sizeof(sockOptValue));
 		if (retval != 0)
 		{
@@ -254,7 +263,7 @@ int CServer::ThrfRun()
 		}
 
 		// client socket option: keepalive interval
-		sockOptValue = 10;
+		sockOptValue = 10; // s
 		retval = setsockopt(connfdCurrent, IPPROTO_TCP, TCP_KEEPINTVL, &sockOptValue, sizeof(sockOptValue));
 		if (retval != 0)
 		{
@@ -288,16 +297,15 @@ int CServer::ThrfRun()
 
 		psSlotInfo->threadParamsClientConnection.sockfd = psSlotInfo->connfd;
 		psSlotInfo->threadParamsClientConnection.slotIndex = slotIndex;
-		psSlotInfo->thrClientConnection = std::thread(&CServer::ThrfClientConnection, this, &psSlotInfo->threadParamsClientConnection);
+		psSlotInfo->thrClientConnection = std::thread(&CServer::ClientConnection, this, &psSlotInfo->threadParamsClientConnection);
 	}
 
 	return OK;
 }
 
-int CServer::ThrfClientConnection(void *pArgs)
+int CServer::ClientConnection(S_PARAMS_CLIENTCONNECTION *psParams)
 {
 	int retval = 0;
-	S_PARAMS_CLIENTCONNECTION *psParams = (S_PARAMS_CLIENTCONNECTION *)pArgs;
 	char aBufRaw[CSERVER_NET_BUFFERSIZE] = {0};
 	char aBuf[CSERVER_NET_BUFFERSIZE] = {0};
 	char aBufResp[CSERVER_NET_BUFFERSIZE] = {0};
@@ -393,7 +401,7 @@ int CServer::ThrfClientConnection(void *pArgs)
 	return OK;
 }
 
-int CServer::ThrfUpdate()
+int CServer::Update()
 {
 	time_t currentTime = 0;
 	int i = 0;

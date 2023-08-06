@@ -1,4 +1,3 @@
-#include <signal.h>
 #include <unistd.h>
 
 #include "server.h"
@@ -12,9 +11,6 @@
 		split main and cmain (rename)
 		CServer structs in klassen splitten und in Funktionen aufteilen
 		set/mosset --> set mosfet/gpio ; dasselbe mit allen kommandos...
->		username-independend paths
-		Check if something can be made smarter... (core?)
-		Thrf... --> Normale Fnktion?
 		Clean up everything / Sort functions properly / Code formatter { 0 }
 		main() with args so Port can be set from command line etc...
 		Server has many functions with pointers to own members --> pass only slotindex
@@ -22,6 +18,7 @@
 		ENDEND
 			Each class has to initialize members to 0 in constructor
 			threads have to be detached
+			Sort functions
 
 		Test every single function again
 
@@ -32,6 +29,7 @@
 
 	MOSFET
 		Implement function "mosread"
+		More dynamic setting 0xFF
 
 	INTERFACE
 		Make it so you can connect with a browser and click on buttons instead of sending commands
@@ -40,20 +38,17 @@
 		Documentation please!
 */
 
-// global variables
-S_MAIN gsMain = {0};
-
 // private functions
-int main_ThrfKeyboardcontrol();
-int main_ExitApplication(CServer *pServer, CLog *pLog);
+int main_Keyboardcontrol(S_MAIN *psMain);
+int main_ExitApplication(S_MAIN *psMain, CServer *pServer, CLog *pLog);
 
 int main()
 {
 	int retval = 0;
-	struct sigaction sigAction = {0};
 	int hasError = false;
 	int i = 0;
 	int (*pFunc)() = 0;
+	S_MAIN sMain = {0};
 
 	// create log folder path
 	retval = CCore::Mkdir(FOLDERPATH_LOG);
@@ -63,38 +58,29 @@ int main()
 		return ERROR;
 	}
 
-	snprintf(gsMain.aFilepathLog, ARRAYSIZE(gsMain.aFilepathLog), "%s/%s", FOLDERPATH_LOG, LOG_NAME);
+	snprintf(sMain.aFilepathLog, ARRAYSIZE(sMain.aFilepathLog), "%s/%s", FOLDERPATH_LOG, LOG_NAME);
 
 	// initialize log
-	CLog Log(gsMain.aFilepathLog);
+	CLog Log(sMain.aFilepathLog);
 
 	// initialize server
-	CServer Server(&gsMain, &Log);
-
-	// make process ignore SIGPIPE signal, so it will not exit when writing to disconnected socket
-	sigAction.sa_handler = SIG_IGN;
-	retval = sigaction(SIGPIPE, &sigAction, NULL);
-	if (retval != 0)
-	{
-		Log.Log("%s: Failed to ignore the SIGPIPE signal", __FUNCTION__);
-		return ERROR;
-	}
+	CServer Server(&sMain, &Log);
 
 	// run server thread
-	gsMain.aThreadStatus[THR_SERVERRUN] = OK;
-	gsMain.aThread[THR_SERVERRUN] = std::thread(&CServer::ThrfRun, &Server);
+	sMain.aThreadStatus[THR_SERVERRUN] = OK;
+	sMain.aThread[THR_SERVERRUN] = std::thread(&CServer::Run, &Server);
 
 	// start keyboard control thread
-	gsMain.aThreadStatus[THR_KEYBOARDCONTROL] = OK;
-	gsMain.aThread[THR_KEYBOARDCONTROL] = std::thread(&main_ThrfKeyboardcontrol);
+	sMain.aThreadStatus[THR_KEYBOARDCONTROL] = OK;
+	sMain.aThread[THR_KEYBOARDCONTROL] = std::thread(&main_Keyboardcontrol, &sMain);
 
 	// main loop
 	while (1)
 	{
 		// check thread status
-		for (i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
+		for (i = 0; i < ARRAYSIZE(sMain.aThread); ++i)
 		{
-			if (gsMain.aThreadStatus[i] != OK)
+			if (sMain.aThreadStatus[i] != OK)
 			{
 				Log.Log("%s: There was an error in thread %d, ending...", __FUNCTION__, i);
 				hasError = true;
@@ -103,11 +89,11 @@ int main()
 		}
 
 		// check if application should exit
-		if (hasError || gsMain.exitApplication)
+		if (hasError || sMain.exitApplication)
 		{
 			Log.Log("Exiting application...");
 
-			retval = main_ExitApplication(&Server, &Log);
+			retval = main_ExitApplication(&sMain, &Server, &Log);
 			if (retval != OK)
 				return ERROR;
 
@@ -127,7 +113,7 @@ int main()
 	return OK;
 }
 
-int main_ThrfKeyboardcontrol()
+int main_Keyboardcontrol(S_MAIN *psMain)
 {
 	char ch = 0;
 
@@ -137,7 +123,7 @@ int main_ThrfKeyboardcontrol()
 		ch = getchar();
 
 		if (ch == 'e')
-			gsMain.exitApplication = true;
+			psMain->exitApplication = true;
 
 		usleep(DELAY_KEYBOARDCONTROLLOOP);
 	}
@@ -145,7 +131,7 @@ int main_ThrfKeyboardcontrol()
 	return OK;
 }
 
-int main_ExitApplication(CServer *pServer, CLog *pLog)
+int main_ExitApplication(S_MAIN *psMain, CServer *pServer, CLog *pLog)
 {
 	int i = 0;
 	int retval = 0;
@@ -157,9 +143,9 @@ int main_ExitApplication(CServer *pServer, CLog *pLog)
 		hasError = true;
 
 	// cancel main threads
-	for (i = 0; i < ARRAYSIZE(gsMain.aThread); ++i)
+	for (i = 0; i < ARRAYSIZE(psMain->aThread); ++i)
 	{
-		retval = CCore::DetachThreadSafely(&gsMain.aThread[i]);
+		retval = CCore::DetachThreadSafely(&psMain->aThread[i]);
 		if (retval != OK)
 		{
 			pLog->Log("%s: Failed to detach thread %d", __FUNCTION__, i);
