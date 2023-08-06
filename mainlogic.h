@@ -11,25 +11,25 @@
 
 #define CMAINLOGIC_KBDKEY_ENDPROGRAM 'e'
 
-// enums
-typedef enum
-{
-    THR_SERVERRUN,
-    THR_KEYBOARDCONTROL,
-    AMOUNT_THREADS,
-} E_THREADS;
-
+// classes
 class CServer;
 
 class CMainlogic
 {
 public:
-    CMainlogic();
+    enum E_THREADS
+    {
+        THR_SERVERRUN,
+        THR_KEYBOARDCONTROL,
+        AMOUNT_THREADS,
+    };
+
+    CMainlogic(const char *pLogFolder, const char *pLogName);
     ~CMainlogic();
     int EntryPoint();
-    int SetThreadStatus(E_THREADS Thread, int Status);
+    int SetThreadStatus(E_THREADS ThreadIndex, int Status);
     void RequestApplicationExit();
-    CLog *m_pLog;
+    CLog m_Log;
 
 private:
     int Keyboardcontrol();

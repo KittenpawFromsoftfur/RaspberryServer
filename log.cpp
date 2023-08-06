@@ -13,10 +13,10 @@ CLog::CLog(const char *pFolder, const char *pFile)
 {
 	int retval = 0;
 
-	memset(m_aLogFilename, 0, ARRAYSIZE(m_aLogFilename));
+	memset(m_aLogFullPath, 0, ARRAYSIZE(m_aLogFullPath));
 
 	// combine folder and file names
-	snprintf(m_aLogFilename, ARRAYSIZE(m_aLogFilename), "%s/%s", pFolder, pFile);
+	snprintf(m_aLogFullPath, ARRAYSIZE(m_aLogFullPath), "%s/%s", pFolder, pFile);
 
 	// make directory
 	retval = CCore::Mkdir(pFolder);
@@ -29,7 +29,6 @@ CLog::CLog(const char *pFolder, const char *pFile)
 
 void CLog::Log(const char *pMessage, ...)
 {
-	printf("\n\t<%s> <%s>\n", m_aLogFilename, pMessage);
 	char buffer[CLOG_MSG_MAXLEN] = {0};
 	va_list argptr;
 	va_start(argptr, pMessage);
@@ -41,7 +40,7 @@ void CLog::Log(const char *pMessage, ...)
 
 const char *CLog::GetLogFilename()
 {
-	return m_aLogFilename;
+	return m_aLogFullPath;
 }
 
 int CLog::WriteToFile(const char *pMessage)
@@ -50,7 +49,7 @@ int CLog::WriteToFile(const char *pMessage)
 	time_t t = time(0);
 	struct tm sTime = *localtime(&t);
 
-	pFile = fopen(m_aLogFilename, "a");
+	pFile = fopen(m_aLogFullPath, "a");
 	if (pFile == 0)
 	{
 		printf("%s: Failed to open file\n", __FUNCTION__);

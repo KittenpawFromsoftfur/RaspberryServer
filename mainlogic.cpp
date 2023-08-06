@@ -1,20 +1,21 @@
 #include <unistd.h>
+#include <string.h>
 
 #include "mainlogic.h"
 
-CMainlogic::CMainlogic()
+CMainlogic::CMainlogic(const char *pLogFolder, const char *pLogName) : m_Log(pLogFolder, pLogName)
 {
-    int m_aThreadStatus = {0};
-    bool m_DoExitApplication = false;
-
-    CLog *m_pLog = new CLog(FOLDERPATH_LOG, LOG_NAME);
-    CServer *m_pServer = new CServer(this);
+    m_DoExitApplication = false;
+    m_pServer = new CServer(this);
+    memset(m_aThreadStatus, 0, ARRAYSIZE(m_aThreadStatus) * sizeof(int));
 }
 
 CMainlogic::~CMainlogic()
 {
+    for (int i = 0; i < ARRAYSIZE(m_aThread); ++i)
+        CCore::DetachThreadSafely(&m_aThread[i]);
+
     delete m_pServer;
-    delete m_pLog;
 }
 
 int CMainlogic::EntryPoint()
@@ -38,7 +39,7 @@ int CMainlogic::EntryPoint()
         {
             if (m_aThreadStatus[i] != OK)
             {
-                m_pLog->Log("%s: There was an error in thread %d, ending...", __FUNCTION__, i);
+                m_Log.Log("%s: There was an error in thread %d, ending...", __FUNCTION__, i);
                 hasError = true;
                 break;
             }
@@ -47,7 +48,7 @@ int CMainlogic::EntryPoint()
         // check if application should exit
         if (hasError || m_DoExitApplication)
         {
-            m_pLog->Log("Exiting application...");
+            m_Log.Log("Exiting application...");
 
             retval = ExitApplication();
             if (retval != OK)
@@ -58,8 +59,6 @@ int CMainlogic::EntryPoint()
 
         usleep(CMAINLOGIC_DELAY_MAINLOOP);
     }
-
-    m_pLog->Log("Application ended");
 
     if (hasError)
         return ERROR;
@@ -84,8 +83,6 @@ int CMainlogic::Keyboardcontrol()
 
         if (ch == CMAINLOGIC_KBDKEY_ENDPROGRAM)
             RequestApplicationExit();
-        else if (ch == 'a')
-            m_pLog->Log("hai sodesu");
 
         usleep(CMAINLOGIC_DELAY_KEYBOARDCONTROLLOOP);
     }
@@ -109,7 +106,7 @@ int CMainlogic::ExitApplication()
         retval = CCore::DetachThreadSafely(&m_aThread[i]);
         if (retval != OK)
         {
-            m_pLog->Log("%s: Failed to detach thread %d", __FUNCTION__, i);
+            m_Log.Log("%s: Failed to detach thread %d", __FUNCTION__, i);
             hasError = true;
         }
     }
@@ -120,15 +117,15 @@ int CMainlogic::ExitApplication()
     return OK;
 }
 
-int CMainlogic::SetThreadStatus(E_THREADS Thread, int Status)
+int CMainlogic::SetThreadStatus(E_THREADS ThreadIndex, int Status)
 {
-    if ((Thread < 0 || Thread >= AMOUNT_THREADS) || (Status != OK && Status != ERROR))
+    if ((ThreadIndex < 0 || ThreadIndex >= ARRAYSIZE(m_aThreadStatus)) || (Status != OK && Status != ERROR))
     {
-        m_pLog->Log("%s: Failed to set thread status [%d] to %d\n", Thread, Status);
+        m_Log.Log("%s: Failed to set thread status [%d] to %d\n", __FUNCTION__, ThreadIndex, Status);
         return ERROR;
     }
 
-    m_aThreadStatus[Thread] = Status;
+    m_aThreadStatus[ThreadIndex] = Status;
 
     return OK;
 }

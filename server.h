@@ -26,6 +26,7 @@
 
 #define CSERVER_CHARRANGE_ASCII_READABLE "[Aa-Zz, 0-9]"
 
+#define CSERVER_MAX_ECHOES 25
 #define CSERVER_MAX_LEN_ECHO 128
 
 #define CSERVER_DELAY_RECEIVE 10000		 // 10ms
@@ -76,106 +77,104 @@
 #define CSERVER_COM_ACTIVATE_PASS3 "cookie"
 #define CSERVER_COM_ACTIVATE_RESPONSE "Quack"
 
-// enums
-enum E_COMMANDS
-{
-	COM_HELP,
-	COM_ACTIVATEACCOUNT,
-	COM_REGISTER,
-	COM_LOGIN,
-	COM_LOGOUT,
-	COM_SHUTDOWN,
-	COM_RUN,
-	COM_DELETE,
-	COM_DEFINE_GPIO,
-	COM_SET,
-	COM_CLEAR,
-	COM_DEFINE_MOSFET,
-	COM_MOSSET,
-	COM_MOSREAD,
-	COM_MOSCLEAR,
-	COM_ECHO,
-	COM_EXIT,
-};
-
-enum E_ACCOUNTACTIONS
-{
-	ACCACTION_REGISTER,
-	ACCACTION_LOGIN,
-	ACCACTION_LOGOUT,
-};
-
-enum
-{
-	ACCKEY_USERNAME,
-	ACCKEY_PASSWORD,
-	ACCKEY_ACTIVATED,
-};
-
-enum E_FILETYPES
-{
-	FILETYPE_ACCOUNT,
-	FILETYPE_DEFINES_GPIO,
-	FILETYPE_DEFINES_MOSFET,
-	FILETYPE_LOG,
-};
-
-// structs
-typedef struct
-{
-	int sockfd;
-	int slotIndex;
-} S_PARAMS_CLIENTCONNECTION;
-
-typedef struct
-{
-	E_COMMANDS ID;
-	char aName[CSERVER_MAX_LEN_TOKEN];
-	char aHelp[CSERVER_MAX_LEN_COMHELP];
-	char aParams[CSERVER_MAX_LEN_COMPARAMS];
-	char aExample[CSERVER_MAX_LEN_COMEXAMPLE];
-	int flags;
-} S_COMMAND;
-
-typedef struct
-{
-	int connfd;
-	std::thread thrClientConnection;
-	S_PARAMS_CLIENTCONNECTION threadParamsClientConnection;
-	in_addr_t clientIP;
-	char aUsername[CSERVER_MAX_LEN_USERFILES];
-	int loggedIn;
-	int activated;
-	int failedLogins;
-	int requestedDisconnect;
-	int banned;
-} S_SLOTINFO;
-
-typedef struct
-{
-	int listenfd;
-	std::thread thrUpdate;
-	in_addr_t aBannedIPs[CSERVER_MAX_BANNED_IPS];
-	time_t aBanStartTime[CSERVER_MAX_BANNED_IPS];
-	time_t aBanDuration[CSERVER_MAX_BANNED_IPS];
-	in_addr_t aSuspiciousIPs[CSERVER_MAX_SUSPICIOUS_IPS];
-	int aSuspiciousAttempts[CSERVER_MAX_SUSPICIOUS_IPS];
-	time_t aSuspiciousStartTime[CSERVER_MAX_SUSPICIOUS_IPS];
-} S_SERVERINFO;
-
+// classes
 class CMainlogic;
 
 class CServer
 {
 public:
-	// members
 	CServer(CMainlogic *pMainlogic);
 	~CServer();
 	int Run();
 	int OnExitApplication();
 
 private:
-	// methods
+	enum E_COMMANDS
+	{
+		COM_HELP,
+		COM_ACTIVATEACCOUNT,
+		COM_REGISTER,
+		COM_LOGIN,
+		COM_LOGOUT,
+		COM_SHUTDOWN,
+		COM_RUN,
+		COM_DELETE,
+		COM_DEFINE_GPIO,
+		COM_SET,
+		COM_CLEAR,
+		COM_DEFINE_MOSFET,
+		COM_MOSSET,
+		COM_MOSREAD,
+		COM_MOSCLEAR,
+		COM_ECHO,
+		COM_EXIT,
+		AMOUNT_COMMANDS,
+	};
+
+	enum E_ACCOUNTACTIONS
+	{
+		ACCACTION_REGISTER,
+		ACCACTION_LOGIN,
+		ACCACTION_LOGOUT,
+	};
+
+	enum
+	{
+		ACCKEY_USERNAME,
+		ACCKEY_PASSWORD,
+		ACCKEY_ACTIVATED,
+	};
+
+	enum E_FILETYPES
+	{
+		FILETYPE_ACCOUNT,
+		FILETYPE_DEFINES_GPIO,
+		FILETYPE_DEFINES_MOSFET,
+		FILETYPE_LOG,
+	};
+
+	typedef struct
+	{
+		int sockfd;
+		int slotIndex;
+	} S_PARAMS_CLIENTCONNECTION;
+
+	typedef struct
+	{
+		E_COMMANDS ID;
+		char aName[CSERVER_MAX_LEN_TOKEN];
+		char aHelp[CSERVER_MAX_LEN_COMHELP];
+		char aParams[CSERVER_MAX_LEN_COMPARAMS];
+		char aExample[CSERVER_MAX_LEN_COMEXAMPLE];
+		int flags;
+	} S_COMMAND;
+
+	typedef struct
+	{
+		int connfd;
+		std::thread thrClientConnection;
+		S_PARAMS_CLIENTCONNECTION threadParamsClientConnection;
+		in_addr_t clientIP;
+		char aUsername[CSERVER_MAX_LEN_USERFILES];
+		int loggedIn;
+		int activated;
+		int failedLogins;
+		int requestedDisconnect;
+		int banned;
+	} S_SLOTINFO;
+
+	typedef struct
+	{
+		int listenfd;
+		std::thread thrUpdate;
+		in_addr_t aBannedIPs[CSERVER_MAX_BANNED_IPS];
+		time_t aBanStartTime[CSERVER_MAX_BANNED_IPS];
+		time_t aBanDuration[CSERVER_MAX_BANNED_IPS];
+		in_addr_t aSuspiciousIPs[CSERVER_MAX_SUSPICIOUS_IPS];
+		int aSuspiciousAttempts[CSERVER_MAX_SUSPICIOUS_IPS];
+		time_t aSuspiciousStartTime[CSERVER_MAX_SUSPICIOUS_IPS];
+	} S_SERVERINFO;
+
 	int ClientConnection(S_PARAMS_CLIENTCONNECTION *psParams);
 	int Update();
 	int ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, char *pResp, size_t LenResp);
@@ -199,9 +198,53 @@ private:
 	int GetSuspiciousAttempts(in_addr_t IP);
 	struct in_addr GetIPStruct(in_addr_t IP);
 
-	// members
 	CMainlogic *m_pMainlogic;
 	CHardware m_Hardware;
 	S_SERVERINFO m_sServerInfo;
 	S_SLOTINFO m_asSlotInfo[CSERVER_MAX_SLOTS];
+	S_COMMAND m_asCommands[AMOUNT_COMMANDS] =
+		{
+			{COM_HELP, CSERVER_COMMAND_STRING_HELP, "Lists this help", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
+			{COM_ACTIVATEACCOUNT, "i", "Activates your account and unlocks all commands", CSERVER_COM_ACTIVATE_PASS1 " " CSERVER_COM_ACTIVATE_PASS2 " " CSERVER_COM_ACTIVATE_PASS3, "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN},
+			{COM_REGISTER, "register", "Registers an account, " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters", "<username> <password>", "bob ross", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
+			{COM_LOGIN, "login", "Logs an account in, " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters", "<username> <password>", "bob ross", CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
+			{COM_LOGOUT, "logout", "Logs an account out", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDIN},
+			{COM_SHUTDOWN, "shutdown", "Shuts down the server", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_RUN, "run", "Runs a console command on the machine", "<command>", "reboot", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_DELETE, "delete", "Deletes the program log, your defines, your account or all files", "log/defines/account/all", "log", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_DEFINE_GPIO, "define_gpio", "Defines the name of a GPIO. The name must begin with a letter, and have " STRINGIFY_VALUE(CSERVER_MIN_LEN_DEFINES) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_DEFINES) " characters. Name is case insensitive", "<GPIO number " CSERVER_COM_GPIO_RANGE "> <name>", "0 fan", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_SET, "set", "Sets the status of a GPIO, all GPIOs are output", "<GPIO number " CSERVER_COM_GPIO_RANGE "/name> <1/0/on/off/high/low>", "fan on", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_CLEAR, "clear", "Clears the status of all GPIOs", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_DEFINE_MOSFET, "define_mosfet", "Defines the name of a MOSFET. The name must begin with a letter, and have " STRINGIFY_VALUE(CSERVER_MIN_LEN_DEFINES) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_DEFINES) " characters. Name is case insensitive", "<MOSFET number " CSERVER_COM_MOSFET_RANGE "> <name>", "1 lawnmower", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_MOSSET, "mosset", "Sets the status of a MOSFET", "<MOSFET number " CSERVER_COM_MOSFET_RANGE "/name> <1/0/on/off/high/low>", "lawnmower on", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_MOSREAD, "mosread", "(Not yet implemented!) Reads the status of all MOSFETs", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_MOSCLEAR, "mosclear", "Clears the status of all MOSFETs", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_ECHO, "echo", "The echo which echoes", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
+			{COM_EXIT, "exit", "Closes your connection", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
+	};
+	char m_aaEchoes[CSERVER_MAX_ECHOES][CSERVER_MAX_LEN_ECHO] =
+		{
+			{"Ahuurr durr"},
+			{"Yodelihuhuu"},
+			{"AAAAAAAAAAAH"},
+			{"Icy fire"},
+			{"Hello"},
+			{"Don't you scream at me lil boi"},
+			{"Stop"},
+			{"I said don't touch me... EEK"},
+			{"Meow"},
+			{"Bark"},
+			{"Echo"},
+			{"HADOUKEN"},
+			{"Hypopotomonstrosesquipedaliophobia"},
+			{"Mosquito bun"},
+			{"A: Will you stop permanently loudmouthing me? B: Yesn't"},
+			{"A: What's your name? B: Vanessa! A: No your real name! B: Vanessa! No your real name! B: FRAAAANK!"},
+			{"Hey... did you hear that?"},
+			{"Shush there's something in the bushes!"},
+			{"EEEEY I SAID STOP NO SCREAMING. WHY IS IT STILL SO LOUD? Oh wait thats me."},
+			{"You sussy baka"},
+			{"Yes please?"},
+			{"Yarr I'm a Pirate, I am a Pirate"},
+	};
 };
