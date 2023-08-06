@@ -8,8 +8,9 @@
 class CLog
 {
 public:
-	CLog(const char *pLogFilename);
+	CLog(const char *pFolder, const char *pLogFile);
 	void Log(const char *pMessage, ...);
+	const char *GetLogFilename();
 
 private:
 	int WriteToFile(const char *pMessage);

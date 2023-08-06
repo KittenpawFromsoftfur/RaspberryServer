@@ -20,7 +20,7 @@ int CCore::Mkdir(const char *pPath)
 	struct stat sStat = {0};
 	int retval = 0;
 
-	// create account and define folder paths
+	// check if folders exist already
 	retval = stat(pPath, &sStat);
 	if (retval != 0)
 	{

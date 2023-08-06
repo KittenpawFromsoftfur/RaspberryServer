@@ -12,9 +12,10 @@
 #include <sys/select.h>
 #include <signal.h>
 
-#include "server.h"
-#include "core.h"
 #include "main.h"
+#include "server.h"
+#include "mainlogic.h"
+#include "core.h"
 
 // global variables
 S_COMMAND gasCommands[] =
@@ -64,12 +65,10 @@ char gaaEchoes[][CSERVER_MAX_LEN_ECHO] =
 		{"Yarr I'm a Pirate, I am a Pirate"},
 };
 
-CServer::CServer(S_MAIN *psMain, CLog *pLog)
+CServer::CServer(CMainlogic *pMainlogic)
 {
-	m_psMain = psMain;
-	m_pLog = pLog;
+	m_pMainlogic = pMainlogic;
 	m_sServerInfo = {0};
-
 	memset(&m_asSlotInfo, 0, sizeof(m_asSlotInfo));
 }
 
@@ -94,13 +93,19 @@ int CServer::Run()
 	int sockOptValue = 0;
 	S_SLOTINFO *psSlotInfo = 0;
 
+	printf("\nwaiting...\n");
+	m_pMainlogic->m_pLog->Log("NICE NICE NICE NICE");
+	usleep(1000000);
+	m_pMainlogic->m_pLog->Log("%s: NICE NICE NICE NICE", __FUNCTION__);
+	printf("\nenterint...\n");
+
 	// make process ignore SIGPIPE signal, so it will not exit when writing to disconnected socket
 	sigAction.sa_handler = SIG_IGN;
 	retval = sigaction(SIGPIPE, &sigAction, NULL);
 	if (retval != 0)
 	{
-		m_pLog->Log("%s: Failed to ignore the SIGPIPE signal", __FUNCTION__);
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->m_pLog->Log("%s: Failed to ignore the SIGPIPE signal", __FUNCTION__);
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
@@ -108,7 +113,7 @@ int CServer::Run()
 	retval = ResetHardware();
 	if (retval != OK)
 	{
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
@@ -119,8 +124,8 @@ int CServer::Run()
 	retval = CCore::Mkdir(CSERVER_FOLDERPATH_ACCOUNTS);
 	if (retval != OK)
 	{
-		m_pLog->Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_ACCOUNTS);
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->m_pLog->Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_ACCOUNTS);
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
@@ -128,8 +133,8 @@ int CServer::Run()
 	retval = CCore::Mkdir(CSERVER_FOLDERPATH_DEFINES_GPIO);
 	if (retval != OK)
 	{
-		m_pLog->Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_DEFINES_GPIO);
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->m_pLog->Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_DEFINES_GPIO);
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
@@ -137,8 +142,8 @@ int CServer::Run()
 	retval = CCore::Mkdir(CSERVER_FOLDERPATH_DEFINES_MOSFET);
 	if (retval != OK)
 	{
-		m_pLog->Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_DEFINES_MOSFET);
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->m_pLog->Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_DEFINES_MOSFET);
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
@@ -149,8 +154,8 @@ int CServer::Run()
 	m_sServerInfo.listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_sServerInfo.listenfd == -1)
 	{
-		m_pLog->Log("%s: Failed to create listenfd, errno: %d", __FUNCTION__, errno);
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->m_pLog->Log("%s: Failed to create listenfd, errno: %d", __FUNCTION__, errno);
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
@@ -159,8 +164,8 @@ int CServer::Run()
 	retval = setsockopt(m_sServerInfo.listenfd, SOL_SOCKET, SO_REUSEADDR, &sockOptValue, sizeof(sockOptValue));
 	if (retval != 0)
 	{
-		m_pLog->Log("%s: Failed to set socket option: SO_REUSEADDR, errno: %d", __FUNCTION__, errno);
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->m_pLog->Log("%s: Failed to set socket option: SO_REUSEADDR, errno: %d", __FUNCTION__, errno);
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
@@ -173,8 +178,8 @@ int CServer::Run()
 	retval = bind(m_sServerInfo.listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 	if (retval != 0)
 	{
-		m_pLog->Log("%s: Failed to bind, errno: %d", __FUNCTION__, errno);
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->m_pLog->Log("%s: Failed to bind, errno: %d", __FUNCTION__, errno);
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
@@ -182,24 +187,24 @@ int CServer::Run()
 	retval = listen(m_sServerInfo.listenfd, CSERVER_MAX_LEN_LISTENQUEUE);
 	if (retval != 0)
 	{
-		m_pLog->Log("%s: Failed to listen, errno: %d", __FUNCTION__, errno);
-		m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+		m_pMainlogic->m_pLog->Log("%s: Failed to listen, errno: %d", __FUNCTION__, errno);
+		m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 		return ERROR;
 	}
 
 	// server loop
-	m_pLog->Log("Server running...");
+	m_pMainlogic->m_pLog->Log("Server running...");
 
 	while (1)
 	{
 		// accept incoming connections
-		m_pLog->Log("Ready for new connection...");
+		m_pMainlogic->m_pLog->Log("Ready for new connection...");
 
 		socklenCurrent = sizeof(struct sockaddr);
 		connfdCurrent = accept(m_sServerInfo.listenfd, (struct sockaddr *)&sockaddr_current, &socklenCurrent);
 
 		// check connection details
-		m_pLog->Log("Accepted port %d, IP %s", htons(sockaddr_current.sin_port), inet_ntoa(sockaddr_current.sin_addr));
+		m_pMainlogic->m_pLog->Log("Accepted port %d, IP %s", htons(sockaddr_current.sin_port), inet_ntoa(sockaddr_current.sin_addr));
 
 		// check if a client with the same IP has been connected before
 		slotIndex = -1;
@@ -216,7 +221,7 @@ int CServer::Run()
 		// same IP, clean up old thread
 		if (slotIndex > -1)
 		{
-			m_pLog->Log("Slot[%d] Same IP detected, cleaning up...", slotIndex);
+			m_pMainlogic->m_pLog->Log("Slot[%d] Same IP detected, cleaning up...", slotIndex);
 			CleanOldSession(&m_asSlotInfo[slotIndex]);
 		}
 
@@ -235,7 +240,7 @@ int CServer::Run()
 		// if no free client index was found
 		if (slotIndex < 0)
 		{
-			m_pLog->Log("Max client connections reached, no thread created");
+			m_pMainlogic->m_pLog->Log("Max client connections reached, no thread created");
 			close(connfdCurrent);
 			continue;
 		}
@@ -245,9 +250,9 @@ int CServer::Run()
 		retval = setsockopt(connfdCurrent, SOL_SOCKET, SO_KEEPALIVE, &sockOptValue, sizeof(sockOptValue));
 		if (retval != 0)
 		{
-			m_pLog->Log("%s: Failed to set socket option: SO_KEEPALIVE, errno: %d", __FUNCTION__, errno);
+			m_pMainlogic->m_pLog->Log("%s: Failed to set socket option: SO_KEEPALIVE, errno: %d", __FUNCTION__, errno);
 			close(connfdCurrent);
-			m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+			m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 			return ERROR;
 		}
 
@@ -256,9 +261,9 @@ int CServer::Run()
 		retval = setsockopt(connfdCurrent, IPPROTO_TCP, TCP_KEEPIDLE, &sockOptValue, sizeof(sockOptValue));
 		if (retval != 0)
 		{
-			m_pLog->Log("%s: Failed to set socket option: TCP_KEEPIDLE, errno: %d", __FUNCTION__, errno);
+			m_pMainlogic->m_pLog->Log("%s: Failed to set socket option: TCP_KEEPIDLE, errno: %d", __FUNCTION__, errno);
 			close(connfdCurrent);
-			m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+			m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 			return ERROR;
 		}
 
@@ -267,9 +272,9 @@ int CServer::Run()
 		retval = setsockopt(connfdCurrent, IPPROTO_TCP, TCP_KEEPINTVL, &sockOptValue, sizeof(sockOptValue));
 		if (retval != 0)
 		{
-			m_pLog->Log("%s: Failed to set socket option: TCP_KEEPINTVL, errno: %d", __FUNCTION__, errno);
+			m_pMainlogic->m_pLog->Log("%s: Failed to set socket option: TCP_KEEPINTVL, errno: %d", __FUNCTION__, errno);
 			close(connfdCurrent);
-			m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+			m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 			return ERROR;
 		}
 
@@ -278,9 +283,9 @@ int CServer::Run()
 		retval = setsockopt(connfdCurrent, IPPROTO_TCP, TCP_KEEPCNT, &sockOptValue, sizeof(sockOptValue));
 		if (retval != 0)
 		{
-			m_pLog->Log("%s: Failed to set socket option: TCP_KEEPCNT, errno: %d", __FUNCTION__, errno);
+			m_pMainlogic->m_pLog->Log("%s: Failed to set socket option: TCP_KEEPCNT, errno: %d", __FUNCTION__, errno);
 			close(connfdCurrent);
-			m_psMain->aThreadStatus[THR_SERVERRUN] = ERROR;
+			m_pMainlogic->SetThreadStatus(THR_SERVERRUN, ERROR);
 			return ERROR;
 		}
 
@@ -293,7 +298,7 @@ int CServer::Run()
 		psSlotInfo->connfd = connfdCurrent;
 
 		// create thread
-		m_pLog->Log("Slot[%d] Creating new thread...", slotIndex);
+		m_pMainlogic->m_pLog->Log("Slot[%d] Creating new thread...", slotIndex);
 
 		psSlotInfo->threadParamsClientConnection.sockfd = psSlotInfo->connfd;
 		psSlotInfo->threadParamsClientConnection.slotIndex = slotIndex;
@@ -318,7 +323,7 @@ int CServer::ClientConnection(S_PARAMS_CLIENTCONNECTION *psParams)
 	// check if IP banned, then close socket
 	if (CheckIPBanned(psSlotInfo, &sTime))
 	{
-		m_pLog->Log("Slot[%d] IP '%s' still banned for %dh %dm %ds, cleaning up...", psParams->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
+		m_pMainlogic->m_pLog->Log("Slot[%d] IP '%s' still banned for %dh %dm %ds, cleaning up...", psParams->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
 		snprintf(aBufResp, ARRAYSIZE(aBufResp), CSERVER_RESPONSE_PREFIX "You are banned for %dh %dm %ds\n", sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
 		write(psParams->sockfd, aBufResp, ARRAYSIZE(aBufResp));
 		CleanOldSession(psSlotInfo);
@@ -358,20 +363,20 @@ int CServer::ClientConnection(S_PARAMS_CLIENTCONNECTION *psParams)
 			// check if client disconnected and close socket
 			if (strnlen(aBufRaw, ARRAYSIZE(aBuf)) == 0)
 			{
-				m_pLog->Log("Slot[%d] Disconnected", psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Disconnected", psParams->slotIndex);
 
 				CleanOldSession(psSlotInfo);
 				return ERROR;
 			}
 			else if (strnlen(aBuf, ARRAYSIZE(aBuf)) > 0) // client sent message
 			{
-				m_pLog->Log("Slot[%d] <%s>", psParams->slotIndex, aBuf);
+				m_pMainlogic->m_pLog->Log("Slot[%d] <%s>", psParams->slotIndex, aBuf);
 
 				memset(aBufResp, 0, ARRAYSIZE(aBufResp));
 				retval = ParseMessage(psParams, aBuf, aBufResp, ARRAYSIZE(aBufResp));
 				if (retval != OK)
 				{
-					m_pLog->Log("%s: Slot[%d] Error parsing message", __FUNCTION__, psParams->slotIndex);
+					m_pMainlogic->m_pLog->Log("%s: Slot[%d] Error parsing message", __FUNCTION__, psParams->slotIndex);
 				}
 
 				// send response
@@ -394,7 +399,7 @@ int CServer::ClientConnection(S_PARAMS_CLIENTCONNECTION *psParams)
 		}
 		else // error
 		{
-			m_pLog->Log("Slot[%d] Error for select(), errno: %d\n", psParams->slotIndex, errno);
+			m_pMainlogic->m_pLog->Log("Slot[%d] Error for select(), errno: %d\n", psParams->slotIndex, errno);
 		}
 	}
 
@@ -423,7 +428,7 @@ int CServer::Update()
 				RemoveSuspiciousIP(m_sServerInfo.aBannedIPs[i]);
 
 				// unban IP
-				m_pLog->Log("IP[%d] '%s' has been unbanned", i, inet_ntoa(GetIPStruct(m_sServerInfo.aBannedIPs[i])));
+				m_pMainlogic->m_pLog->Log("IP[%d] '%s' has been unbanned", i, inet_ntoa(GetIPStruct(m_sServerInfo.aBannedIPs[i])));
 				m_sServerInfo.aBannedIPs[i] = 0;
 				m_sServerInfo.aBanStartTime[i] = 0;
 				m_sServerInfo.aBanDuration[i] = 0;
@@ -438,7 +443,7 @@ int CServer::Update()
 
 			if (currentTime >= m_sServerInfo.aSuspiciousStartTime[i] + CSERVER_SUSPICIOUS_FALLOFF_TIME)
 			{
-				m_pLog->Log("Unlisted suspicious IP[%d] '%s'", i, inet_ntoa(GetIPStruct(m_sServerInfo.aSuspiciousIPs[i])));
+				m_pMainlogic->m_pLog->Log("Unlisted suspicious IP[%d] '%s'", i, inet_ntoa(GetIPStruct(m_sServerInfo.aSuspiciousIPs[i])));
 				RemoveSuspiciousIP(m_sServerInfo.aSuspiciousIPs[i]);
 			}
 		}
@@ -460,14 +465,14 @@ int CServer::OnExitApplication()
 	// detach update thread
 	retval = CCore::DetachThreadSafely(&m_sServerInfo.thrUpdate);
 	if (retval != OK)
-		m_pLog->Log("Failed to detach update thread");
+		m_pMainlogic->m_pLog->Log("Failed to detach update thread");
 
 	// cancel client connection threads and close sockets
 	for (i = 0; i < ARRAYSIZE(m_asSlotInfo); ++i)
 	{
 		retval = CCore::DetachThreadSafely(&m_asSlotInfo[i].thrClientConnection);
 		if (retval != OK)
-			m_pLog->Log("Failed to detach client connection thread");
+			m_pMainlogic->m_pLog->Log("Failed to detach client connection thread");
 
 		CloseClientSocket(&m_asSlotInfo[i]);
 	}
@@ -570,7 +575,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 
 	if (commandExecutable)
 	{
-		m_pLog->Log("Slot[%d] --> '%s'", psParams->slotIndex, gasCommands[commandIndex].aName);
+		m_pMainlogic->m_pLog->Log("Slot[%d] --> '%s'", psParams->slotIndex, gasCommands[commandIndex].aName);
 
 		switch (gasCommands[commandIndex].ID)
 		{
@@ -630,13 +635,13 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 				retval = WriteKey(psSlotInfo, FILETYPE_ACCOUNT, ACCKEY_ACTIVATED, "1", pResp, LenResp);
 				if (retval != OK)
 				{
-					m_pLog->Log("Slot[%d] Failed to activate account '%s'", psParams->slotIndex, psSlotInfo->aUsername);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Failed to activate account '%s'", psParams->slotIndex, psSlotInfo->aUsername);
 				}
 				else
 				{
 					psSlotInfo->activated = true;
 					strncat(pResp, CSERVER_COM_ACTIVATE_RESPONSE "! Account activated!", LenResp);
-					m_pLog->Log("Slot[%d] Account '%s' has been activated", psParams->slotIndex, psSlotInfo->aUsername);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Account '%s' has been activated", psParams->slotIndex, psSlotInfo->aUsername);
 				}
 			}
 			else
@@ -649,11 +654,11 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			retval = AccountAction(ACCACTION_REGISTER, psSlotInfo, aaToken[1], aaToken[2], NULL, pResp, LenResp);
 			if (retval != OK)
 			{
-				m_pLog->Log("Slot[%d] Failed to register <%s> <%s>", psParams->slotIndex, aaToken[1], aaToken[2]);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Failed to register <%s> <%s>", psParams->slotIndex, aaToken[1], aaToken[2]);
 			}
 			else
 			{
-				m_pLog->Log("Slot[%d] Registered user <%s> <%s>", psParams->slotIndex, aaToken[1], aaToken[2]);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Registered user <%s> <%s>", psParams->slotIndex, aaToken[1], aaToken[2]);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Successfully registered, please log in!");
 				strncat(pResp, aBufTemp, LenResp);
 			}
@@ -669,13 +674,13 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = AddSuspiciousIP(psSlotInfo->clientIP);
 					if (retval != OK)
 					{
-						m_pLog->Log("Slot[%d] Unable to add suspicious IP '%s', safety mesure: Exit application", psParams->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)));
-						m_psMain->exitApplication = true;
+						m_pMainlogic->m_pLog->Log("Slot[%d] Unable to add suspicious IP '%s', safety mesure: Exit application", psParams->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)));
+						m_pMainlogic->RequestApplicationExit();
 					}
 				}
 
 				susAttempts = GetSuspiciousAttempts(psSlotInfo->clientIP);
-				m_pLog->Log("Slot[%d] Failed to log in with '%s' '%s', failed logins: %d/%d, total attempts of '%s': %d/%d", psParams->slotIndex, aaToken[1], aaToken[2], psSlotInfo->failedLogins, CSERVER_MAX_FAILED_LOGINS, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), susAttempts, CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Failed to log in with '%s' '%s', failed logins: %d/%d, total attempts of '%s': %d/%d", psParams->slotIndex, aaToken[1], aaToken[2], psSlotInfo->failedLogins, CSERVER_MAX_FAILED_LOGINS, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), susAttempts, CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS);
 
 				// check if IP ban necessary
 				if (susAttempts >= CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS)
@@ -695,14 +700,14 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = BanIP(psSlotInfo->clientIP, banTime);
 					if (retval != OK)
 					{
-						m_pLog->Log("Slot[%d] Unable to ban IP '%s', safety mesure: Exit application", psParams->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)));
-						m_psMain->exitApplication = true;
+						m_pMainlogic->m_pLog->Log("Slot[%d] Unable to ban IP '%s', safety mesure: Exit application", psParams->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)));
+						m_pMainlogic->RequestApplicationExit();
 					}
 					else
 					{
 						psSlotInfo->banned = true;
 						sTime = *localtime(&banTime);
-						m_pLog->Log("Slot[%d] Banned IP '%s' for %dh %dm %ds", psParams->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Banned IP '%s' for %dh %dm %ds", psParams->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "\n" CSERVER_RESPONSE_PREFIX "You have been banned for %dh %dm %ds", sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
 						strncat(pResp, aBufTemp, LenResp);
 					}
@@ -710,7 +715,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			}
 			else
 			{
-				m_pLog->Log("Slot[%d] Account '%s' logged in", psParams->slotIndex, psSlotInfo->aUsername);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Account '%s' logged in", psParams->slotIndex, psSlotInfo->aUsername);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Welcome back %s", aaToken[1]);
 				strncat(pResp, aBufTemp, LenResp);
 			}
@@ -720,19 +725,19 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			retval = AccountAction(ACCACTION_LOGOUT, psSlotInfo, NULL, NULL, NULL, pResp, LenResp);
 			if (retval != OK)
 			{
-				m_pLog->Log("Slot[%d] Failed to log out with account '%s'", psParams->slotIndex, psSlotInfo->aUsername);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Failed to log out with account '%s'", psParams->slotIndex, psSlotInfo->aUsername);
 			}
 			else
 			{
-				m_pLog->Log("Slot[%d] Account logged out", psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Account logged out", psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Logged out");
 				strncat(pResp, aBufTemp, LenResp);
 			}
 			break;
 
 		case COM_SHUTDOWN:
-			m_pLog->Log("Slot[%d] Has shut down the server", psParams->slotIndex);
-			m_psMain->exitApplication = true;
+			m_pMainlogic->m_pLog->Log("Slot[%d] Has shut down the server", psParams->slotIndex);
+			m_pMainlogic->RequestApplicationExit();
 			break;
 
 		case COM_RUN:
@@ -742,11 +747,11 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			strtok_r(pRest, " ", &pRest);
 			strncpy(aFullParameters, pRest, ARRAYSIZE(aFullParameters));
 
-			m_pLog->Log("Slot[%d] Running command '%s'...", psParams->slotIndex, aFullParameters);
+			m_pMainlogic->m_pLog->Log("Slot[%d] Running command '%s'...", psParams->slotIndex, aFullParameters);
 
 			retval = system(aFullParameters);
 
-			m_pLog->Log("Slot[%d] Command returned %d", psParams->slotIndex, retval);
+			m_pMainlogic->m_pLog->Log("Slot[%d] Command returned %d", psParams->slotIndex, retval);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "'%s' returned %d", aFullParameters, retval);
 			strncat(pResp, aBufTemp, LenResp);
 			break;
@@ -758,12 +763,12 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 				retval = RemoveFile(psSlotInfo, FILETYPE_LOG, pResp, LenResp);
 				if (retval != OK)
 				{
-					m_pLog->Log("%s: Failed to remove log file", __FUNCTION__);
+					m_pMainlogic->m_pLog->Log("%s: Failed to remove log file", __FUNCTION__);
 				}
 				else
 				{
 					strncat(pResp, "Deleted log file", LenResp);
-					m_pLog->Log("Slot[%d] User '%s' deleted log", psParams->slotIndex, psSlotInfo->aUsername);
+					m_pMainlogic->m_pLog->Log("Slot[%d] User '%s' deleted log", psParams->slotIndex, psSlotInfo->aUsername);
 				}
 			} // account
 			else if (CCore::StringCompareNocase(aaToken[1], "account", ARRAYSIZE(aaToken[0])) == 0)
@@ -772,7 +777,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 				retval = RemoveFile(psSlotInfo, FILETYPE_ACCOUNT, pResp, LenResp);
 				if (retval != OK)
 				{
-					m_pLog->Log("%s: Failed to delete account file, defines were not removed", __FUNCTION__);
+					m_pMainlogic->m_pLog->Log("%s: Failed to delete account file, defines were not removed", __FUNCTION__);
 				}
 				else
 				{
@@ -780,7 +785,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = RemoveFile(psSlotInfo, FILETYPE_DEFINES_GPIO, pResp, LenResp);
 					if (retval != OK)
 					{
-						m_pLog->Log("%s: Failed to additionally delete defines GPIO file", __FUNCTION__);
+						m_pMainlogic->m_pLog->Log("%s: Failed to additionally delete defines GPIO file", __FUNCTION__);
 					}
 					else
 					{
@@ -788,7 +793,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 						retval = RemoveFile(psSlotInfo, FILETYPE_DEFINES_MOSFET, pResp, LenResp);
 						if (retval != OK)
 						{
-							m_pLog->Log("%s: Failed to additionally delete defines MOSFET file", __FUNCTION__);
+							m_pMainlogic->m_pLog->Log("%s: Failed to additionally delete defines MOSFET file", __FUNCTION__);
 						}
 						else
 						{
@@ -796,11 +801,11 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 							retval = AccountAction(ACCACTION_LOGOUT, psSlotInfo, NULL, NULL, NULL, pResp, LenResp);
 							if (retval != OK)
 							{
-								m_pLog->Log("Slot[%d] Failed to additionally log out with account '%s'", psParams->slotIndex, psSlotInfo->aUsername);
+								m_pMainlogic->m_pLog->Log("Slot[%d] Failed to additionally log out with account '%s'", psParams->slotIndex, psSlotInfo->aUsername);
 							}
 							else
 							{
-								m_pLog->Log("Slot[%d] Deleted account and logged out", psParams->slotIndex);
+								m_pMainlogic->m_pLog->Log("Slot[%d] Deleted account and logged out", psParams->slotIndex);
 								snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Deleted account and logged out");
 								strncat(pResp, aBufTemp, LenResp);
 							}
@@ -814,7 +819,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 				retval = CreateDefinesFile(FILETYPE_DEFINES_GPIO, psSlotInfo->aUsername, pResp, LenResp);
 				if (retval != OK)
 				{
-					m_pLog->Log("Slot[%d] User '%s' unable to clear defines GPIO", psParams->slotIndex, psSlotInfo->aUsername);
+					m_pMainlogic->m_pLog->Log("Slot[%d] User '%s' unable to clear defines GPIO", psParams->slotIndex, psSlotInfo->aUsername);
 				}
 				else
 				{
@@ -822,11 +827,11 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = CreateDefinesFile(FILETYPE_DEFINES_MOSFET, psSlotInfo->aUsername, pResp, LenResp);
 					if (retval != OK)
 					{
-						m_pLog->Log("Slot[%d] User '%s' unable to clear defines MOSFET", psParams->slotIndex, psSlotInfo->aUsername);
+						m_pMainlogic->m_pLog->Log("Slot[%d] User '%s' unable to clear defines MOSFET", psParams->slotIndex, psSlotInfo->aUsername);
 					}
 					else
 					{
-						m_pLog->Log("Slot[%d] User '%s' defines were cleared", psParams->slotIndex, psSlotInfo->aUsername);
+						m_pMainlogic->m_pLog->Log("Slot[%d] User '%s' defines were cleared", psParams->slotIndex, psSlotInfo->aUsername);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Deleted defines");
 						strncat(pResp, aBufTemp, LenResp);
 					}
@@ -837,7 +842,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 				// safety measure in case we ever change the accounts / defines directory to anywhere that is not our program directory
 				if (strstr(CSERVER_FOLDERPATH_ACCOUNTS, FILEPATH_BASE) == 0 || strstr(CSERVER_FOLDERPATH_DEFINES_GPIO, FILEPATH_BASE) == 0 || strstr(CSERVER_FOLDERPATH_DEFINES_MOSFET, FILEPATH_BASE) == 0)
 				{
-					m_pLog->Log("Slot[%d] Danger! Folder path for accounts or defines are not inside the base folder path '%s', important files could be deleted", psParams->slotIndex, FILEPATH_BASE);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Danger! Folder path for accounts or defines are not inside the base folder path '%s', important files could be deleted", psParams->slotIndex, FILEPATH_BASE);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Unable to delete all files", CSERVER_FOLDERPATH_ACCOUNTS);
 					strncat(pResp, aBufTemp, LenResp);
 				}
@@ -847,7 +852,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = CCore::RemoveFilesDirectory(CSERVER_FOLDERPATH_ACCOUNTS);
 					if (retval != OK)
 					{
-						m_pLog->Log("Slot[%d] Failed to remove files in directory '%s'", psParams->slotIndex, CSERVER_FOLDERPATH_ACCOUNTS);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Failed to remove files in directory '%s'", psParams->slotIndex, CSERVER_FOLDERPATH_ACCOUNTS);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to remove files in directory '%s'", CSERVER_FOLDERPATH_ACCOUNTS);
 						strncat(pResp, aBufTemp, LenResp);
 					}
@@ -857,7 +862,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 						retval = CCore::RemoveFilesDirectory(CSERVER_FOLDERPATH_DEFINES_GPIO);
 						if (retval != OK)
 						{
-							m_pLog->Log("Slot[%d] Failed to remove files in directory '%s'", psParams->slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
+							m_pMainlogic->m_pLog->Log("Slot[%d] Failed to remove files in directory '%s'", psParams->slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
 							snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to remove files in directory '%s'", CSERVER_FOLDERPATH_DEFINES_GPIO);
 							strncat(pResp, aBufTemp, LenResp);
 						}
@@ -867,7 +872,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 							retval = CCore::RemoveFilesDirectory(CSERVER_FOLDERPATH_DEFINES_MOSFET);
 							if (retval != OK)
 							{
-								m_pLog->Log("Slot[%d] Failed to remove files in directory '%s'", psParams->slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
+								m_pMainlogic->m_pLog->Log("Slot[%d] Failed to remove files in directory '%s'", psParams->slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
 								snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to remove files in directory '%s'", CSERVER_FOLDERPATH_DEFINES_GPIO);
 								strncat(pResp, aBufTemp, LenResp);
 							}
@@ -877,7 +882,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 								retval = RemoveFile(psSlotInfo, FILETYPE_LOG, pResp, LenResp);
 								if (retval != OK)
 								{
-									m_pLog->Log("Slot[%d] Failed to remove log file", psParams->slotIndex);
+									m_pMainlogic->m_pLog->Log("Slot[%d] Failed to remove log file", psParams->slotIndex);
 								}
 								else
 								{
@@ -885,11 +890,11 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 									retval = AccountAction(ACCACTION_LOGOUT, psSlotInfo, NULL, NULL, NULL, pResp, LenResp);
 									if (retval != OK)
 									{
-										m_pLog->Log("Slot[%d] Failed to additionally log out with account '%s'", psParams->slotIndex, psSlotInfo->aUsername);
+										m_pMainlogic->m_pLog->Log("Slot[%d] Failed to additionally log out with account '%s'", psParams->slotIndex, psSlotInfo->aUsername);
 									}
 									else
 									{
-										m_pLog->Log("Slot[%d] Deleted all files and logged out", psParams->slotIndex);
+										m_pMainlogic->m_pLog->Log("Slot[%d] Deleted all files and logged out", psParams->slotIndex);
 										snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Deleted all files and logged out");
 										strncat(pResp, aBufTemp, LenResp);
 									}
@@ -902,7 +907,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			else // invalid category
 			{
 				respondParametersWrong = true;
-				m_pLog->Log("Slot[%d] Wrong parameters for deleting", psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Wrong parameters for deleting", psParams->slotIndex);
 			}
 			break;
 
@@ -911,25 +916,25 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 
 			if (CCore::IsLetter(aaToken[1][0]))
 			{
-				m_pLog->Log("Slot[%d] Error, GPIO number must be a number", psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, GPIO number must be a number", psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, GPIO number must be a number");
 				strncat(pResp, aBufTemp, LenResp);
 			} // number must be in range
 			else if (!m_Hardware.IsGpioValid(pinNumber))
 			{
-				m_pLog->Log("Slot[%d] Error, GPIO number must be " CSERVER_COM_GPIO_RANGE, psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, GPIO number must be " CSERVER_COM_GPIO_RANGE, psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, GPIO number must be " CSERVER_COM_GPIO_RANGE);
 				strncat(pResp, aBufTemp, LenResp);
 			} // name must begin with letter
 			else if (!CCore::IsLetter(aaToken[2][0]))
 			{
-				m_pLog->Log("Slot[%d] Error, name must begin with a letter", psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, name must begin with a letter", psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, name must begin with a letter");
 				strncat(pResp, aBufTemp, LenResp);
 			} // name must be simple ascii
 			else if (!CCore::CheckStringAscii(aaToken[2], ARRAYSIZE(aaToken[0])))
 			{
-				m_pLog->Log("Slot[%d] Error, name must contain only characters " CSERVER_CHARRANGE_ASCII_READABLE, psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, name must contain only characters " CSERVER_CHARRANGE_ASCII_READABLE, psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, name must contain only characters " CSERVER_CHARRANGE_ASCII_READABLE);
 				strncat(pResp, aBufTemp, LenResp);
 			}
@@ -937,13 +942,13 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			{
 				if (strlen(aaToken[2]) < CSERVER_MIN_LEN_DEFINES || strlen(aaToken[2]) > CSERVER_MAX_LEN_DEFINES)
 				{
-					m_pLog->Log("Slot[%d] Error, define name must have %d - %d characters", psParams->slotIndex, CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Error, define name must have %d - %d characters", psParams->slotIndex, CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, define name must have %d - %d characters", CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
 					strncat(pResp, aBufTemp, LenResp);
 				}
 				else if (!CCore::CheckStringAscii(aaToken[2], ARRAYSIZE(aaToken[2])))
 				{
-					m_pLog->Log("Slot[%d] Error, define name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, psParams->slotIndex);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Error, define name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, psParams->slotIndex);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, define name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE);
 					strncat(pResp, aBufTemp, LenResp);
 				}
@@ -952,11 +957,11 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = WriteKey(psSlotInfo, FILETYPE_DEFINES_GPIO, pinNumber, aaToken[2], pResp, LenResp);
 					if (retval != OK)
 					{
-						m_pLog->Log("Slot[%d] Failed to define <%d> <%s>", psParams->slotIndex, pinNumber, aaToken[2]);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Failed to define <%d> <%s>", psParams->slotIndex, pinNumber, aaToken[2]);
 					}
 					else
 					{
-						m_pLog->Log("Slot[%d] Defined GPIO %d as '%s'", psParams->slotIndex, pinNumber, aaToken[2]);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Defined GPIO %d as '%s'", psParams->slotIndex, pinNumber, aaToken[2]);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Defined GPIO %d as '%s'", pinNumber, aaToken[2]);
 						strncat(pResp, aBufTemp, LenResp);
 					}
@@ -984,7 +989,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = ReadKey(psSlotInfo->aUsername, FILETYPE_DEFINES_GPIO, i, aRead, ARRAYSIZE(aRead), pResp, LenResp);
 					if (retval != OK)
 					{
-						m_pLog->Log("Slot[%d] Failed to read key %d", psParams->slotIndex, i);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Failed to read key %d", psParams->slotIndex, i);
 					}
 					else // compare name
 					{
@@ -1004,7 +1009,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			// check GPIO number
 			if (!m_Hardware.IsGpioValid(pinNumber))
 			{
-				m_pLog->Log("Slot[%d] Error, name not found or GPIO number outside " CSERVER_COM_GPIO_RANGE, psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, name not found or GPIO number outside " CSERVER_COM_GPIO_RANGE, psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, name not found or GPIO number outside " CSERVER_COM_GPIO_RANGE);
 				strncat(pResp, aBufTemp, LenResp);
 			}
@@ -1038,7 +1043,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 				// check GPIO state validity
 				if (pinState < 0 || pinState > 1)
 				{
-					m_pLog->Log("Slot[%d] Error unknown GPIO state '%s'", psParams->slotIndex, aaToken[2]);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Error unknown GPIO state '%s'", psParams->slotIndex, aaToken[2]);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error unknown GPIO state '%s'", aaToken[2]);
 					strncat(pResp, aBufTemp, LenResp);
 				}
@@ -1047,7 +1052,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					// set GPIO
 					m_Hardware.SetGpio(pinNumber, pinState);
 
-					m_pLog->Log("Slot[%d] GPIO %s (%d) --> %s", psParams->slotIndex, aaToken[1], pinNumber, aaToken[2]);
+					m_pMainlogic->m_pLog->Log("Slot[%d] GPIO %s (%d) --> %s", psParams->slotIndex, aaToken[1], pinNumber, aaToken[2]);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "GPIO %s (%d) --> %s", aaToken[1], pinNumber, aaToken[2]);
 					strncat(pResp, aBufTemp, LenResp);
 				}
@@ -1057,7 +1062,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 		case COM_CLEAR:
 			m_Hardware.ClearGpio();
 
-			m_pLog->Log("Slot[%d] Cleared GPIOs", psParams->slotIndex);
+			m_pMainlogic->m_pLog->Log("Slot[%d] Cleared GPIOs", psParams->slotIndex);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Cleared GPIOs");
 			strncat(pResp, aBufTemp, LenResp);
 			break;
@@ -1067,25 +1072,25 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 
 			if (CCore::IsLetter(aaToken[1][0]))
 			{
-				m_pLog->Log("Slot[%d] Error, MOSFET number must be a number", psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, MOSFET number must be a number", psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, MOSFET number must be a number");
 				strncat(pResp, aBufTemp, LenResp);
 			} // number must be in range
 			else if (!m_Hardware.IsMosfetValid(pinNumber))
 			{
-				m_pLog->Log("Slot[%d] Error, MOSFET number must be " CSERVER_COM_MOSFET_RANGE, psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, MOSFET number must be " CSERVER_COM_MOSFET_RANGE, psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, MOSFET number must be " CSERVER_COM_MOSFET_RANGE);
 				strncat(pResp, aBufTemp, LenResp);
 			} // name must begin with letter
 			else if (!CCore::IsLetter(aaToken[2][0]))
 			{
-				m_pLog->Log("Slot[%d] Error, name must begin with a letter", psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, name must begin with a letter", psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, name must begin with a letter");
 				strncat(pResp, aBufTemp, LenResp);
 			} // name must be simple ascii
 			else if (!CCore::CheckStringAscii(aaToken[2], ARRAYSIZE(aaToken[0])))
 			{
-				m_pLog->Log("Slot[%d] Error, name must contain only characters " CSERVER_CHARRANGE_ASCII_READABLE, psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, name must contain only characters " CSERVER_CHARRANGE_ASCII_READABLE, psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, name must contain only characters " CSERVER_CHARRANGE_ASCII_READABLE);
 				strncat(pResp, aBufTemp, LenResp);
 			}
@@ -1093,13 +1098,13 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			{
 				if (strlen(aaToken[2]) < CSERVER_MIN_LEN_DEFINES || strlen(aaToken[2]) > CSERVER_MAX_LEN_DEFINES)
 				{
-					m_pLog->Log("Slot[%d] Error, define name must have %d - %d characters", psParams->slotIndex, CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Error, define name must have %d - %d characters", psParams->slotIndex, CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, define name must have %d - %d characters", CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
 					strncat(pResp, aBufTemp, LenResp);
 				}
 				else if (!CCore::CheckStringAscii(aaToken[2], ARRAYSIZE(aaToken[2])))
 				{
-					m_pLog->Log("Slot[%d] Error, define name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, psParams->slotIndex);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Error, define name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, psParams->slotIndex);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, define name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE);
 					strncat(pResp, aBufTemp, LenResp);
 				}
@@ -1108,11 +1113,11 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = WriteKey(psSlotInfo, FILETYPE_DEFINES_MOSFET, pinNumber, aaToken[2], pResp, LenResp);
 					if (retval != OK)
 					{
-						m_pLog->Log("Slot[%d] Failed to define <%d> <%s>", psParams->slotIndex, pinNumber, aaToken[2]);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Failed to define <%d> <%s>", psParams->slotIndex, pinNumber, aaToken[2]);
 					}
 					else
 					{
-						m_pLog->Log("Slot[%d] Defined MOSFET %d as '%s'", psParams->slotIndex, pinNumber, aaToken[2]);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Defined MOSFET %d as '%s'", psParams->slotIndex, pinNumber, aaToken[2]);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Defined MOSFET %d as '%s'", pinNumber, aaToken[2]);
 						strncat(pResp, aBufTemp, LenResp);
 					}
@@ -1136,7 +1141,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 					retval = ReadKey(psSlotInfo->aUsername, FILETYPE_DEFINES_MOSFET, i, aRead, ARRAYSIZE(aRead), pResp, LenResp);
 					if (retval != OK)
 					{
-						m_pLog->Log("Slot[%d] Failed to read key %d", psParams->slotIndex, i);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Failed to read key %d", psParams->slotIndex, i);
 					}
 					else // compare name
 					{
@@ -1156,7 +1161,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			// check MOSFET number
 			if (!m_Hardware.IsMosfetValid(pinNumber))
 			{
-				m_pLog->Log("Slot[%d] Error, name not found or MOSFET number outside " CSERVER_COM_MOSFET_RANGE, psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Error, name not found or MOSFET number outside " CSERVER_COM_MOSFET_RANGE, psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, name not found or MOSFET number outside " CSERVER_COM_MOSFET_RANGE);
 				strncat(pResp, aBufTemp, LenResp);
 			}
@@ -1190,7 +1195,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 				// check MOSFET state validity
 				if (pinState < 0 || pinState > 1)
 				{
-					m_pLog->Log("Slot[%d] Error unknown MOSFET state '%s'", psParams->slotIndex, aaToken[2]);
+					m_pMainlogic->m_pLog->Log("Slot[%d] Error unknown MOSFET state '%s'", psParams->slotIndex, aaToken[2]);
 					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error unknown MOSFET state '%s'", aaToken[2]);
 					strncat(pResp, aBufTemp, LenResp);
 				}
@@ -1201,13 +1206,13 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 
 					if (retval != 0)
 					{
-						m_pLog->Log("Slot[%d] Failed to write MOSFET, returned %d", psParams->slotIndex, retval);
+						m_pMainlogic->m_pLog->Log("Slot[%d] Failed to write MOSFET, returned %d", psParams->slotIndex, retval);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to write MOSFET, returned %d", retval);
 						strncat(pResp, aBufTemp, LenResp);
 					}
 					else
 					{
-						m_pLog->Log("Slot[%d] MOSFET %s (%d) --> %s", psParams->slotIndex, aaToken[1], pinNumber, aaToken[2]);
+						m_pMainlogic->m_pLog->Log("Slot[%d] MOSFET %s (%d) --> %s", psParams->slotIndex, aaToken[1], pinNumber, aaToken[2]);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "MOSFET %s (%d) --> %s", aaToken[1], pinNumber, aaToken[2]);
 						strncat(pResp, aBufTemp, LenResp);
 					}
@@ -1216,7 +1221,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			break;
 
 		case COM_MOSREAD:
-			m_pLog->Log("Slot[%d] Implement function 'mosread' please!", psParams->slotIndex);
+			m_pMainlogic->m_pLog->Log("Slot[%d] Implement function 'mosread' please!", psParams->slotIndex);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Implement function 'mosread' please!");
 			strncat(pResp, aBufTemp, LenResp);
 			break;
@@ -1226,13 +1231,13 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 
 			if (retval != 0)
 			{
-				m_pLog->Log("Slot[%d] Failed to clear MOSFETs, returned %d", psParams->slotIndex, retval);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Failed to clear MOSFETs, returned %d", psParams->slotIndex, retval);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to clear MOSFETs, returned %d", retval);
 				strncat(pResp, aBufTemp, LenResp);
 			}
 			else
 			{
-				m_pLog->Log("Slot[%d] Cleared MOSFETs", psParams->slotIndex);
+				m_pMainlogic->m_pLog->Log("Slot[%d] Cleared MOSFETs", psParams->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Cleared MOSFETs");
 				strncat(pResp, aBufTemp, LenResp);
 			}
@@ -1242,7 +1247,7 @@ void CServer::EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[C
 			randNr = rand() % ARRAYSIZE(gaaEchoes);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "You shouted... you hear '%s'", gaaEchoes[randNr]);
 			strncat(pResp, aBufTemp, LenResp);
-			m_pLog->Log("Echoed '%s'", pResp);
+			m_pMainlogic->m_pLog->Log("Echoed '%s'", pResp);
 			break;
 
 		case COM_EXIT:
@@ -1336,7 +1341,7 @@ int CServer::ResetHardware()
 	// clear MOSFETs
 	retval = m_Hardware.ClearMosfet();
 	if (retval != 0)
-		m_pLog->Log("%s: Failed to clear MOSFETs", __FUNCTION__);
+		m_pMainlogic->m_pLog->Log("%s: Failed to clear MOSFETs", __FUNCTION__);
 
 	return retval;
 }
@@ -1369,7 +1374,7 @@ void CServer::MakeFilepath(E_FILETYPES FileType, const char *pUsername, int File
 			break;
 
 		case FILETYPE_LOG:
-			snprintf(pFullpath, LenFullpath, "%s", m_psMain->aFilepathLog);
+			snprintf(pFullpath, LenFullpath, "%s", m_pMainlogic->m_pLog->GetLogFilename());
 			return;
 			break;
 		}
@@ -1399,7 +1404,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 		len = strnlen(pUsername, CSERVER_MAX_LEN_USERFILES);
 		if (len < CSERVER_MIN_LEN_CREDENTIALS || len > CSERVER_MAX_LEN_CREDENTIALS)
 		{
-			m_pLog->Log("%s: Username too short/long", __FUNCTION__);
+			m_pMainlogic->m_pLog->Log("%s: Username too short/long", __FUNCTION__);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Username must be " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters");
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
@@ -1408,7 +1413,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 		// check username ascii
 		if (!CCore::CheckStringAscii(pUsername, CSERVER_MAX_LEN_CREDENTIALS + 1))
 		{
-			m_pLog->Log("%s: Username must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, __FUNCTION__);
+			m_pMainlogic->m_pLog->Log("%s: Username must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, __FUNCTION__);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Username must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE);
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
@@ -1418,7 +1423,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 		len = strnlen(pPassword, CSERVER_MAX_LEN_USERFILES);
 		if (len < CSERVER_MIN_LEN_CREDENTIALS || len > CSERVER_MAX_LEN_CREDENTIALS)
 		{
-			m_pLog->Log("%s: Password too short/long", __FUNCTION__);
+			m_pMainlogic->m_pLog->Log("%s: Password too short/long", __FUNCTION__);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Password must be " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters");
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
@@ -1427,7 +1432,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 		// check password ascii
 		if (!CCore::CheckStringAscii(pPassword, CSERVER_MAX_LEN_CREDENTIALS + 1))
 		{
-			m_pLog->Log("%s: Password must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, __FUNCTION__);
+			m_pMainlogic->m_pLog->Log("%s: Password must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, __FUNCTION__);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Password must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE);
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
@@ -1444,7 +1449,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 		// if account file already exists
 		if (fileExists != false) // Treat ERROR as "file exists"
 		{
-			m_pLog->Log("%s: File already exists", __FUNCTION__);
+			m_pMainlogic->m_pLog->Log("%s: File already exists", __FUNCTION__);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "User already exists");
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
@@ -1454,7 +1459,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 		fileCount = CCore::CountFilesDirectory(CSERVER_FOLDERPATH_ACCOUNTS);
 		if (fileCount >= CSERVER_MAX_ACCOUNTS)
 		{
-			m_pLog->Log("%s: Too many accounts exist %d/%d", __FUNCTION__, fileCount, CSERVER_MAX_ACCOUNTS);
+			m_pMainlogic->m_pLog->Log("%s: Too many accounts exist %d/%d", __FUNCTION__, fileCount, CSERVER_MAX_ACCOUNTS);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Account limit reached, no more registration allowed");
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
@@ -1467,7 +1472,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 		pFile = fopen(aFilepath, "w");
 		if (!pFile)
 		{
-			m_pLog->Log("%s: Error opening file for account", __FUNCTION__);
+			m_pMainlogic->m_pLog->Log("%s: Error opening file for account", __FUNCTION__);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "An error occurred, please try again later");
 			strncat(pError, aBufTemp, LenError);
 			return ERROR;
@@ -1496,7 +1501,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 		// if account file already exists
 		if (fileExists != true)
 		{
-			m_pLog->Log("%s: Username '%s' does not exist", __FUNCTION__, pUsername);
+			m_pMainlogic->m_pLog->Log("%s: Username '%s' does not exist", __FUNCTION__, pUsername);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), CSERVER_RESPONSE_LOGIN_FAILED);
 			strncat(pError, aBufTemp, LenError);
 
@@ -1513,7 +1518,7 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 
 		if (strcmp(aRead, pPassword) != 0)
 		{
-			m_pLog->Log("%s: Password '%s' incorrect", __FUNCTION__, pPassword);
+			m_pMainlogic->m_pLog->Log("%s: Password '%s' incorrect", __FUNCTION__, pPassword);
 			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), CSERVER_RESPONSE_LOGIN_FAILED);
 			strncat(pError, aBufTemp, LenError);
 
@@ -1562,7 +1567,7 @@ int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char
 	// check file type
 	if (FileType != FILETYPE_DEFINES_GPIO && FileType != FILETYPE_DEFINES_MOSFET)
 	{
-		m_pLog->Log("%s: Error, invalid filetype %d", __FUNCTION__, FileType);
+		m_pMainlogic->m_pLog->Log("%s: Error, invalid filetype %d", __FUNCTION__, FileType);
 		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "An error occurred");
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
@@ -1575,7 +1580,7 @@ int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char
 	pFile = fopen(aFilepath, "w");
 	if (!pFile)
 	{
-		m_pLog->Log("%s: Error opening file for defines", __FUNCTION__);
+		m_pMainlogic->m_pLog->Log("%s: Error opening file for defines", __FUNCTION__);
 		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "An error occurred");
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
@@ -1611,7 +1616,7 @@ int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, con
 	pFile = fopen(aFilepath, "r");
 	if (!pFile)
 	{
-		m_pLog->Log("%s: Error opening file for read", __FUNCTION__);
+		m_pMainlogic->m_pLog->Log("%s: Error opening file for read", __FUNCTION__);
 		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error opening file for read");
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
@@ -1659,7 +1664,7 @@ int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, con
 	pFile = fopen(aFilepath, "w");
 	if (!pFile)
 	{
-		m_pLog->Log("%s: Error opening file for write", __FUNCTION__);
+		m_pMainlogic->m_pLog->Log("%s: Error opening file for write", __FUNCTION__);
 		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error opening file for write");
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
@@ -1694,7 +1699,7 @@ int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char 
 	pFile = fopen(aFilepath, "r");
 	if (!pFile)
 	{
-		m_pLog->Log("%s: Error opening file for read", __FUNCTION__);
+		m_pMainlogic->m_pLog->Log("%s: Error opening file for read", __FUNCTION__);
 		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error opening file for read");
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
@@ -1742,7 +1747,7 @@ int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char 
 
 	fclose(pFile);
 
-	m_pLog->Log("%s: Error, line %d not read", __FUNCTION__, Key);
+	m_pMainlogic->m_pLog->Log("%s: Error, line %d not read", __FUNCTION__, Key);
 	snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error reading line %d", Key);
 	strncat(pError, aBufTemp, LenError);
 
@@ -1762,7 +1767,7 @@ int CServer::RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pErr
 	retval = CCore::RemoveFile(aFilepath);
 	if (retval != OK)
 	{
-		m_pLog->Log("%s: Error removing file '%s'", __FUNCTION__, aFilepath);
+		m_pMainlogic->m_pLog->Log("%s: Error removing file '%s'", __FUNCTION__, aFilepath);
 		snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error removing file");
 		strncat(pError, aBufTemp, LenError);
 		return ERROR;
@@ -1789,7 +1794,7 @@ int CServer::BanIP(in_addr_t IP, time_t Duration)
 
 	if (banSlotCount >= amtSlots)
 	{
-		m_pLog->Log("%s: All banned IP slots occupied (%d)", __FUNCTION__, amtSlots);
+		m_pMainlogic->m_pLog->Log("%s: All banned IP slots occupied (%d)", __FUNCTION__, amtSlots);
 		return ERROR;
 	}
 
@@ -1892,7 +1897,7 @@ int CServer::AddSuspiciousIP(in_addr_t IP)
 	// if no IP matched and all slots full, error
 	if (!addedIP)
 	{
-		m_pLog->Log("%s: All suspicious IP slots occupied (%d)", __FUNCTION__, amtSlots);
+		m_pMainlogic->m_pLog->Log("%s: All suspicious IP slots occupied (%d)", __FUNCTION__, amtSlots);
 		return ERROR;
 	}
 

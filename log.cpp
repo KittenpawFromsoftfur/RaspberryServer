@@ -3,14 +3,28 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <stdexcept>
 
 #include "core.h"
 #include "log.h"
 
 // if the log has to be placed in a non-existing folder, that folder has to be created first, or the logging will fail
-CLog::CLog(const char *pLogFilename)
+CLog::CLog(const char *pFolder, const char *pFile)
 {
-	strncpy(m_aLogFilename, pLogFilename, ARRAYSIZE(m_aLogFilename));
+	int retval = 0;
+
+	// combine folder and file names
+	snprintf(m_aLogFilename, ARRAYSIZE(m_aLogFilename), "%s/%s", pFolder, pFile);
+
+	printf("\nCLog::CLog: <%s>\n", m_aLogFilename);
+
+	// make directory
+	retval = CCore::Mkdir(pFolder);
+	if (retval != OK)
+	{
+		printf("%s: Failed to make directory \"%s\"\n", __FUNCTION__, pFolder);
+		throw std::runtime_error("CLog constructor failed due to inability to create the log directory!");
+	}
 }
 
 void CLog::Log(const char *pMessage, ...)
@@ -23,6 +37,11 @@ void CLog::Log(const char *pMessage, ...)
 	printf("%s\n", buffer);
 	WriteToFile(buffer);
 	va_end(argptr);
+}
+
+const char *CLog::GetLogFilename()
+{
+	return m_aLogFilename;
 }
 
 int CLog::WriteToFile(const char *pMessage)
@@ -40,7 +59,6 @@ int CLog::WriteToFile(const char *pMessage)
 
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]: ", sTime.tm_year + 1900, sTime.tm_mon + 1, sTime.tm_mday, sTime.tm_hour, sTime.tm_min, sTime.tm_sec);
 	fprintf(pFile, "%s\n", pMessage);
-
 	fclose(pFile);
 
 	return OK;

@@ -8,6 +8,7 @@
 #include "main.h"
 #include "log.h"
 #include "hardware.h"
+#include "mainlogic.h"
 
 // server
 #define CSERVER_NET_PORT 8000
@@ -162,11 +163,13 @@ typedef struct
 	time_t aSuspiciousStartTime[CSERVER_MAX_SUSPICIOUS_IPS];
 } S_SERVERINFO;
 
+class CMainlogic;
+
 class CServer
 {
 public:
 	// members
-	CServer(S_MAIN *psMain, CLog *pLog);
+	CServer(CMainlogic *pMainlogic);
 	~CServer();
 	int Run();
 	int OnExitApplication();
@@ -197,8 +200,7 @@ private:
 	struct in_addr GetIPStruct(in_addr_t IP);
 
 	// members
-	S_MAIN *m_psMain;
-	CLog *m_pLog;
+	CMainlogic *m_pMainlogic;
 	CHardware m_Hardware;
 	S_SERVERINFO m_sServerInfo;
 	S_SLOTINFO m_asSlotInfo[CSERVER_MAX_SLOTS];
