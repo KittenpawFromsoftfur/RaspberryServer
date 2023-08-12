@@ -48,7 +48,7 @@ int CMainlogic::EntryPoint()
         // check if application should exit
         if (hasError || m_DoExitApplication)
         {
-            m_Log.Log("Exiting application...");
+            m_Log.Log("Exiting application (%s)...", hasError ? "error" : "gracefully");
 
             retval = ExitApplication();
             if (retval != OK)

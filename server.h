@@ -135,12 +135,6 @@ private:
 
 	typedef struct
 	{
-		int sockfd;
-		int slotIndex;
-	} S_PARAMS_CLIENTCONNECTION;
-
-	typedef struct
-	{
 		E_COMMANDS ID;
 		char aName[CSERVER_MAX_LEN_TOKEN];
 		char aHelp[CSERVER_MAX_LEN_COMHELP];
@@ -151,9 +145,9 @@ private:
 
 	typedef struct
 	{
-		int connfd;
+		int fdSocket;
+		int slotIndex;
 		std::thread thrClientConnection;
-		S_PARAMS_CLIENTCONNECTION threadParamsClientConnection;
 		in_addr_t clientIP;
 		char aUsername[CSERVER_MAX_LEN_USERFILES];
 		int loggedIn;
@@ -163,26 +157,15 @@ private:
 		int banned;
 	} S_SLOTINFO;
 
-	typedef struct
-	{
-		int listenfd;
-		std::thread thrUpdate;
-		in_addr_t aBannedIPs[CSERVER_MAX_BANNED_IPS];
-		time_t aBanStartTime[CSERVER_MAX_BANNED_IPS];
-		time_t aBanDuration[CSERVER_MAX_BANNED_IPS];
-		in_addr_t aSuspiciousIPs[CSERVER_MAX_SUSPICIOUS_IPS];
-		int aSuspiciousAttempts[CSERVER_MAX_SUSPICIOUS_IPS];
-		time_t aSuspiciousStartTime[CSERVER_MAX_SUSPICIOUS_IPS];
-	} S_SERVERINFO;
-
-	int ClientConnection(S_PARAMS_CLIENTCONNECTION *psParams);
+	void SpawnClientConnection(unsigned long ClientIP, int FDConnection, int SlotIndex);
+	int ClientConnection(S_SLOTINFO *psSlotInfo);
 	int Update();
-	int ParseMessage(S_PARAMS_CLIENTCONNECTION *psParams, const char *pMsg, char *pResp, size_t LenResp);
-	void EvaluateTokens(S_PARAMS_CLIENTCONNECTION *psParams, char aaToken[CSERVER_MAX_TOKENS][CSERVER_MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
+	int ParseMessage(S_SLOTINFO *psSLotInfo, const char *pMsg, char *pResp, size_t LenResp);
+	void EvaluateTokens(S_SLOTINFO *psSLotInfo, char aaToken[CSERVER_MAX_TOKENS][CSERVER_MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
 	int IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags);
 	int IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags);
 	int ResetHardware();
-	void MakeFilepath(E_FILETYPES FileType, const char *pUsername, int FilenameOnly, char *pFullpath, size_t LenFullpath);
+	void GetFilepath(E_FILETYPES FileType, const char *pUsername, int FilenameOnly, char *pFullpath, size_t LenFullpath);
 	int AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPyword, int *pWrongCredentials, char *pError, size_t LenError);
 	int CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *pError, size_t LenError);
 	int WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const char *pValue, char *pError, size_t LenError);
@@ -200,7 +183,14 @@ private:
 
 	CMainlogic *m_pMainlogic;
 	CHardware m_Hardware;
-	S_SERVERINFO m_sServerInfo;
+	int m_FDListen;
+	std::thread m_ThrUpdate;
+	in_addr_t m_aBannedIPs[CSERVER_MAX_BANNED_IPS];
+	time_t m_aBanStartTime[CSERVER_MAX_BANNED_IPS];
+	time_t m_aBanDuration[CSERVER_MAX_BANNED_IPS];
+	in_addr_t m_aSuspiciousIPs[CSERVER_MAX_SUSPICIOUS_IPS];
+	int m_aSuspiciousAttempts[CSERVER_MAX_SUSPICIOUS_IPS];
+	time_t m_aSuspiciousStartTime[CSERVER_MAX_SUSPICIOUS_IPS];
 	S_SLOTINFO m_asSlotInfo[CSERVER_MAX_SLOTS];
 	S_COMMAND m_asCommands[AMOUNT_COMMANDS] =
 		{
