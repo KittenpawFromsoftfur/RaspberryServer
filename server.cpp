@@ -355,7 +355,6 @@ int CServer::ClientConnection(S_SLOTINFO *psSlotInfo)
 int CServer::Update()
 {
 	time_t currentTime = 0;
-	int i = 0;
 
 	while (1)
 	{
@@ -363,7 +362,7 @@ int CServer::Update()
 		currentTime = time(0);
 
 		// update IP bans
-		for (i = 0; i < ARRAYSIZE(m_aBannedIPs); ++i)
+		for (int i = 0; i < ARRAYSIZE(m_aBannedIPs); ++i)
 		{
 			if (m_aBannedIPs[i] == 0)
 				continue;
@@ -382,7 +381,7 @@ int CServer::Update()
 		}
 
 		// update suspicious IPs list
-		for (i = 0; i < ARRAYSIZE(m_aSuspiciousIPs); ++i)
+		for (int i = 0; i < ARRAYSIZE(m_aSuspiciousIPs); ++i)
 		{
 			if (m_aSuspiciousIPs[i] == 0)
 				continue;
@@ -400,7 +399,6 @@ int CServer::Update()
 
 int CServer::OnExitApplication()
 {
-	int i = 0;
 	int retval = 0;
 	int hasError = false;
 
@@ -414,7 +412,7 @@ int CServer::OnExitApplication()
 		m_pMainlogic->m_Log.Log("Failed to detach update thread");
 
 	// cancel client connection threads and close sockets
-	for (i = 0; i < ARRAYSIZE(m_asSlotInfo); ++i)
+	for (int i = 0; i < ARRAYSIZE(m_asSlotInfo); ++i)
 	{
 		retval = CCore::DetachThreadSafely(&m_asSlotInfo[i].thrClientConnection);
 		if (retval != OK)
@@ -476,7 +474,6 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 	int commandCorrect = false;
 	int respondCommandUnknown = false;
 	int respondParametersWrong = false;
-	int i = 0;
 	char aRead[CSERVER_MAX_LEN_LINES] = {0};
 	int pinNumber = 0;
 	int pinState = 0;
@@ -491,7 +488,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 	char *pRest = 0;
 
 	// look for command
-	for (i = 0; i < ARRAYSIZE(m_asCommands); ++i)
+	for (int i = 0; i < ARRAYSIZE(m_asCommands); ++i)
 	{
 		if (CCore::StringCompareNocase(aaToken[0], m_asCommands[i].aName, ARRAYSIZE(aaToken[0])) == 0)
 		{
@@ -907,7 +904,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 				}
 				else
 				{
-					retval = WriteKey(psSlotInfo, FILETYPE_DEFINES_GPIO, pinNumber, aaToken[2], pResp, LenResp);
+					retval = WriteKey(psSlotInfo, FILETYPE_DEFINES_GPIO, (E_ACCOUNTKEYS)pinNumber, aaToken[2], pResp, LenResp);
 					if (retval != OK)
 					{
 						m_pMainlogic->m_Log.Log("Slot[%d] Failed to define <%d> <%s>", psSlotInfo->slotIndex, pinNumber, aaToken[2]);
@@ -933,13 +930,13 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 
 			if (isName)
 			{
-				for (i = 0; i <= 31; ++i)
+				for (int i = 0; i <= 31; ++i)
 				{
 					// skip non-GPIO and i2c-1 pins
 					if (!m_Hardware.IsGpioValid(i))
 						continue;
 
-					retval = ReadKey(psSlotInfo->aUsername, FILETYPE_DEFINES_GPIO, i, aRead, ARRAYSIZE(aRead), pResp, LenResp);
+					retval = ReadKey(psSlotInfo->aUsername, FILETYPE_DEFINES_GPIO, (E_ACCOUNTKEYS)i, aRead, ARRAYSIZE(aRead), pResp, LenResp);
 					if (retval != OK)
 					{
 						m_pMainlogic->m_Log.Log("Slot[%d] Failed to read key %d", psSlotInfo->slotIndex, i);
@@ -1063,7 +1060,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 				}
 				else
 				{
-					retval = WriteKey(psSlotInfo, FILETYPE_DEFINES_MOSFET, pinNumber, aaToken[2], pResp, LenResp);
+					retval = WriteKey(psSlotInfo, FILETYPE_DEFINES_MOSFET, (E_ACCOUNTKEYS)pinNumber, aaToken[2], pResp, LenResp);
 					if (retval != OK)
 					{
 						m_pMainlogic->m_Log.Log("Slot[%d] Failed to define <%d> <%s>", psSlotInfo->slotIndex, pinNumber, aaToken[2]);
@@ -1089,9 +1086,9 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 
 			if (isName)
 			{
-				for (i = 0; i <= 8; ++i)
+				for (int i = 0; i <= 8; ++i)
 				{
-					retval = ReadKey(psSlotInfo->aUsername, FILETYPE_DEFINES_MOSFET, i, aRead, ARRAYSIZE(aRead), pResp, LenResp);
+					retval = ReadKey(psSlotInfo->aUsername, FILETYPE_DEFINES_MOSFET, (E_ACCOUNTKEYS)i, aRead, ARRAYSIZE(aRead), pResp, LenResp);
 					if (retval != OK)
 					{
 						m_pMainlogic->m_Log.Log("Slot[%d] Failed to read key %d", psSlotInfo->slotIndex, i);
@@ -1515,7 +1512,6 @@ int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char
 	FILE *pFile = 0;
 	char aFilepath[MAX_LEN_FILEPATH] = {0};
 	char aBufTemp[CSERVER_NET_BUFFERSIZE] = {0};
-	int i = 0;
 
 	// check file type
 	if (FileType != FILETYPE_DEFINES_GPIO && FileType != FILETYPE_DEFINES_MOSFET)
@@ -1540,7 +1536,7 @@ int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char
 	}
 
 	// write stuff
-	for (i = 0; i < CSERVER_MAX_LINES; ++i)
+	for (int i = 0; i < CSERVER_MAX_LINES; ++i)
 		fprintf(pFile, "\n");
 
 	fclose(pFile);
@@ -1548,7 +1544,7 @@ int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char
 	return OK;
 }
 
-int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, const char *pValue, char *pError, size_t LenError)
+int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, E_ACCOUNTKEYS Key, const char *pValue, char *pError, size_t LenError)
 {
 	FILE *pFile = 0;
 	char aFilepath[MAX_LEN_FILEPATH] = {0};
@@ -1558,7 +1554,6 @@ int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, con
 	int chCount = 0;
 	int lineIndex = 0;
 	int bufIndex = 0;
-	int i = 0;
 	int eofReached = false;
 	char aBufTemp[CSERVER_NET_BUFFERSIZE] = {0};
 
@@ -1623,7 +1618,7 @@ int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, con
 		return ERROR;
 	}
 
-	for (i = 0; i < ARRAYSIZE(aLine); ++i)
+	for (int i = 0; i < ARRAYSIZE(aLine); ++i)
 		fprintf(pFile, aLine[i]);
 
 	fclose(pFile);
@@ -1631,7 +1626,7 @@ int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, int Key, con
 	return OK;
 }
 
-int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char *pKey, size_t LenKey, char *pError, size_t LenError)
+int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, E_ACCOUNTKEYS Key, char *pKey, size_t LenKey, char *pError, size_t LenError)
 {
 	FILE *pFile = 0;
 	char aFilepath[MAX_LEN_FILEPATH] = {0};
@@ -1641,7 +1636,6 @@ int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, int Key, char 
 	int chCount = 0;
 	int lineIndex = 0;
 	int bufIndex = 0;
-	int i = 0;
 	int eofReached = false;
 	char aBufTemp[CSERVER_NET_BUFFERSIZE] = {0};
 
@@ -1732,12 +1726,11 @@ int CServer::RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pErr
 int CServer::BanIP(in_addr_t IP, time_t Duration)
 {
 	int banSlotCount = 0;
-	int i = 0;
 	int amtSlots = ARRAYSIZE(m_aBannedIPs);
 	int freeIndex = -1;
 
 	// check if a ban-slot is free
-	for (i = 0; i < amtSlots; ++i)
+	for (int i = 0; i < amtSlots; ++i)
 	{
 		if (m_aBannedIPs[i] != 0)
 			banSlotCount++;
@@ -1761,11 +1754,10 @@ int CServer::BanIP(in_addr_t IP, time_t Duration)
 
 int CServer::CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime)
 {
-	int i = 0;
 	time_t currentTime = time(0);
 	time_t timeRemaining = 0;
 
-	for (i = 0; i < ARRAYSIZE(m_aBannedIPs); ++i)
+	for (int i = 0; i < ARRAYSIZE(m_aBannedIPs); ++i)
 	{
 		if (psSlotInfo->clientIP == m_aBannedIPs[i])
 		{
@@ -1809,12 +1801,11 @@ void CServer::ResetSlot(S_SLOTINFO *psSlotInfo)
 int CServer::AddSuspiciousIP(in_addr_t IP)
 {
 	int knownSlotIndex = -1;
-	int i = 0;
 	int amtSlots = ARRAYSIZE(m_aSuspiciousIPs);
 	int addedIP = false;
 
 	// check if the IP is already known
-	for (i = 0; i < amtSlots; ++i)
+	for (int i = 0; i < amtSlots; ++i)
 	{
 		if (m_aSuspiciousIPs[i] == IP)
 		{
@@ -1834,7 +1825,7 @@ int CServer::AddSuspiciousIP(in_addr_t IP)
 	}
 	else // add the IP to the first free slot
 	{
-		for (i = 0; i < amtSlots; ++i)
+		for (int i = 0; i < amtSlots; ++i)
 		{
 			if (m_aSuspiciousIPs[i] == 0)
 			{
@@ -1860,12 +1851,11 @@ int CServer::AddSuspiciousIP(in_addr_t IP)
 void CServer::RemoveSuspiciousIP(in_addr_t IP)
 {
 	int knownSlotIndex = -1;
-	int i = 0;
 	int amtSlots = ARRAYSIZE(m_aSuspiciousIPs);
 	int addedIP = false;
 
 	// check if the IP is already known
-	for (i = 0; i < amtSlots; ++i)
+	for (int i = 0; i < amtSlots; ++i)
 	{
 		if (m_aSuspiciousIPs[i] == IP)
 		{
@@ -1880,11 +1870,10 @@ void CServer::RemoveSuspiciousIP(in_addr_t IP)
 
 int CServer::GetSuspiciousAttempts(in_addr_t IP)
 {
-	int i = 0;
 	int attempts = 0;
 
 	// check if IP in list
-	for (i = 0; i < ARRAYSIZE(m_aSuspiciousIPs); ++i)
+	for (int i = 0; i < ARRAYSIZE(m_aSuspiciousIPs); ++i)
 	{
 		if (IP == m_aSuspiciousIPs[i])
 		{
