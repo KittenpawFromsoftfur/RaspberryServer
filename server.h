@@ -11,7 +11,6 @@
 #include "mainlogic.h"
 
 // server
-#define CSERVER_NET_PORT 8000
 #define CSERVER_NET_BUFFERSIZE 2048
 
 #define CSERVER_MAX_LEN_LISTENQUEUE 10
@@ -83,7 +82,7 @@ class CMainlogic;
 class CServer
 {
 public:
-	CServer(CMainlogic *pMainlogic);
+	CServer(CMainlogic *pMainlogic, int ServerPort, int UppercaseResponse);
 	~CServer();
 	int Run();
 	int OnExitApplication();
@@ -181,6 +180,8 @@ private:
 	int GetSuspiciousAttempts(in_addr_t IP);
 	struct in_addr GetIPStruct(in_addr_t IP);
 
+	int m_ServerPort;
+	int m_UppercaseResponse;
 	CMainlogic *m_pMainlogic;
 	CHardware m_Hardware;
 	int m_FDListen;

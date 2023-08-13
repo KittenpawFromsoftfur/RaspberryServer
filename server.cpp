@@ -17,9 +17,16 @@
 #include "mainlogic.h"
 #include "core.h"
 
-CServer::CServer(CMainlogic *pMainlogic)
+CServer::CServer(CMainlogic *pMainlogic, int ServerPort, int UppercaseResponse)
 {
 	m_pMainlogic = pMainlogic;
+
+	if (ServerPort >= 0)
+		m_ServerPort = ServerPort;
+	else
+		m_ServerPort = SERVER_PORT_DEFAULT;
+
+	m_UppercaseResponse = UppercaseResponse;
 	memset(&m_asSlotInfo, 0, sizeof(m_asSlotInfo));
 }
 
@@ -48,7 +55,7 @@ int CServer::Run()
 	if (retval != 0)
 	{
 		m_pMainlogic->m_Log.Log("%s: Failed to ignore the SIGPIPE signal", __FUNCTION__);
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
@@ -56,7 +63,7 @@ int CServer::Run()
 	retval = ResetHardware();
 	if (retval != OK)
 	{
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
@@ -68,7 +75,7 @@ int CServer::Run()
 	if (retval != OK)
 	{
 		m_pMainlogic->m_Log.Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_ACCOUNTS);
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
@@ -77,7 +84,7 @@ int CServer::Run()
 	if (retval != OK)
 	{
 		m_pMainlogic->m_Log.Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_DEFINES_GPIO);
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
@@ -86,7 +93,7 @@ int CServer::Run()
 	if (retval != OK)
 	{
 		m_pMainlogic->m_Log.Log("%s: Failed to make folder \"%s\"", CSERVER_FOLDERPATH_DEFINES_MOSFET);
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
@@ -98,7 +105,7 @@ int CServer::Run()
 	if (m_FDListen == -1)
 	{
 		m_pMainlogic->m_Log.Log("%s: Failed to create server socket, errno: %d", __FUNCTION__, errno);
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
@@ -108,21 +115,21 @@ int CServer::Run()
 	if (retval != 0)
 	{
 		m_pMainlogic->m_Log.Log("%s: Failed to set socket option: SO_REUSEADDR, errno: %d", __FUNCTION__, errno);
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
 	// set up server settings
 	sServAddr.sin_family = AF_INET;
 	sServAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	sServAddr.sin_port = htons(CSERVER_NET_PORT);
+	sServAddr.sin_port = htons(m_ServerPort);
 
 	// bind server socket with settings
 	retval = bind(m_FDListen, (struct sockaddr *)&sServAddr, sizeof(sServAddr));
 	if (retval != 0)
 	{
 		m_pMainlogic->m_Log.Log("%s: Failed to bind, errno: %d", __FUNCTION__, errno);
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
@@ -131,12 +138,12 @@ int CServer::Run()
 	if (retval != 0)
 	{
 		m_pMainlogic->m_Log.Log("%s: Failed to listen, errno: %d", __FUNCTION__, errno);
-		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+		m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 		return ERROR;
 	}
 
 	// server loop
-	m_pMainlogic->m_Log.Log("Server running...");
+	m_pMainlogic->m_Log.Log("Server running port %d, uppercase response %s...", m_ServerPort, m_UppercaseResponse ? "enabled" : "disabled");
 
 	while (1)
 	{
@@ -195,7 +202,7 @@ int CServer::Run()
 		{
 			m_pMainlogic->m_Log.Log("%s: Failed to set socket option: SO_KEEPALIVE, errno: %d", __FUNCTION__, errno);
 			close(fdConnectionCurrent);
-			m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+			m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 			return ERROR;
 		}
 
@@ -206,7 +213,7 @@ int CServer::Run()
 		{
 			m_pMainlogic->m_Log.Log("%s: Failed to set socket option: TCP_KEEPIDLE, errno: %d", __FUNCTION__, errno);
 			close(fdConnectionCurrent);
-			m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+			m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 			return ERROR;
 		}
 
@@ -217,7 +224,7 @@ int CServer::Run()
 		{
 			m_pMainlogic->m_Log.Log("%s: Failed to set socket option: TCP_KEEPINTVL, errno: %d", __FUNCTION__, errno);
 			close(fdConnectionCurrent);
-			m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+			m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 			return ERROR;
 		}
 
@@ -228,7 +235,7 @@ int CServer::Run()
 		{
 			m_pMainlogic->m_Log.Log("%s: Failed to set socket option: TCP_KEEPCNT, errno: %d", __FUNCTION__, errno);
 			close(fdConnectionCurrent);
-			m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, ERROR);
+			m_pMainlogic->SetThreadStatus(CMainlogic::THR_SERVERRUN, CMainlogic::THS_FAILED);
 			return ERROR;
 		}
 
@@ -245,8 +252,6 @@ void CServer::SpawnClientConnection(unsigned long ClientIP, int FDConnection, in
 
 	// assign slot infos
 	psSlotInfo->clientIP = ClientIP;
-
-	// assign client connection infos
 	psSlotInfo->fdSocket = FDConnection;
 	psSlotInfo->slotIndex = SlotIndex;
 
@@ -432,7 +437,6 @@ int CServer::OnExitApplication()
 
 int CServer::ParseMessage(S_SLOTINFO *psSlotInfo, const char *pMsg, char *pResp, size_t LenResp)
 {
-	int retval = 0;
 	char *pToken = 0;
 	char *pRest = 0;
 	char aaToken[CSERVER_MAX_TOKENS][CSERVER_MAX_LEN_TOKEN] = {{0}};
@@ -1226,7 +1230,8 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 	strncat(pResp, "\n", LenResp);
 
 	// uppercase letters
-	// CCore::StringToUpper(pResp, LenResp);
+	if (m_UppercaseResponse)
+		CCore::StringToUpper(pResp, LenResp);
 }
 
 int CServer::IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags)
@@ -1850,9 +1855,7 @@ int CServer::AddSuspiciousIP(in_addr_t IP)
 
 void CServer::RemoveSuspiciousIP(in_addr_t IP)
 {
-	int knownSlotIndex = -1;
 	int amtSlots = ARRAYSIZE(m_aSuspiciousIPs);
-	int addedIP = false;
 
 	// check if the IP is already known
 	for (int i = 0; i < amtSlots; ++i)

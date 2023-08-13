@@ -10,6 +10,7 @@
 #define CMAINLOGIC_DELAY_KEYBOARDCONTROLLOOP 100000 // 100ms
 
 #define CMAINLOGIC_KBDKEY_ENDPROGRAM 'e'
+#define CMAINLOGIC_DESCRIPTION_ENDPROGRAM "Exit application"
 
 // classes
 class CServer;
@@ -24,10 +25,18 @@ public:
         AMOUNT_THREADS,
     };
 
-    CMainlogic(const char *pLogFolder, const char *pLogName);
+    enum E_THREADSTATUS
+    {
+        THS_RUNNING,
+        THS_NOTREQUIRED,
+        THS_FAILED,
+        AMOUNT_THREADSTATUS,
+    };
+
+    CMainlogic(const char *pLogFolder, const char *pLogName, int ServerPort, int UppercaseResponse);
     ~CMainlogic();
     int EntryPoint();
-    int SetThreadStatus(E_THREADS ThreadIndex, int Status);
+    int SetThreadStatus(E_THREADS ThreadIndex, E_THREADSTATUS Status);
     void RequestApplicationExit();
     CLog m_Log;
 
@@ -35,8 +44,8 @@ private:
     int Keyboardcontrol();
     int ExitApplication();
 
-    std::thread m_aThread[AMOUNT_THREADS];
-    int m_aThreadStatus[AMOUNT_THREADS];
     bool m_DoExitApplication;
+    E_THREADSTATUS m_aThreadStatus[AMOUNT_THREADS];
+    std::thread m_aThread[AMOUNT_THREADS];
     CServer *m_pServer;
 };

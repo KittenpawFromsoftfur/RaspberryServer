@@ -10,12 +10,10 @@
 
 CHardware::CHardware()
 {
-	int i = 0;
-
 	wiringPiSetup();
 
 	// set all pins as output
-	for (i = 0; i < 32; ++i)
+	for (int i = 0; i < 32; ++i)
 	{
 		// skip non-gpio and i2c-1 pins
 		if (!IsGpioValid(i))
@@ -47,10 +45,8 @@ int CHardware::SetMosfet(int Pin, int State)
 
 void CHardware::ClearGpio()
 {
-	int i = 0;
-
 	// clear all pins
-	for (i = 0; i < 32; ++i)
+	for (int i = 0; i < 32; ++i)
 	{
 		// skip non-gpio and i2c-1 pins
 		if (!IsGpioValid(i))

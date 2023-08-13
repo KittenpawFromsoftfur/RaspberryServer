@@ -31,6 +31,7 @@ void CLog::Log(const char *pMessage, ...)
 {
 	char buffer[CLOG_MSG_MAXLEN] = {0};
 	va_list argptr;
+
 	va_start(argptr, pMessage);
 	vsprintf(buffer, pMessage, argptr);
 	printf("%s\n", buffer);

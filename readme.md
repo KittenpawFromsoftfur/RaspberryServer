@@ -68,7 +68,7 @@ mkdir /home/<username>/server
 chmod +777 -R /home/<username>/server
 ```
 
-## Set up a static IP address
+## Set up a static IP address and Wifi
 ```
 nano /etc/dhcpcd.conf
 ```

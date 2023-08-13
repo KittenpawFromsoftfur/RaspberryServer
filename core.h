@@ -36,6 +36,7 @@ public:
     static void StringToLower(char *pSource, size_t Len);
     static int CheckStringAscii(const char *pString, size_t Len);
     static int IsLetter(char Char);
+    static int IsNumber(char Char);
     static int DetachThreadSafely(std::thread *pThread);
     int MeasureStart();
     double MeasureStop(int Print);

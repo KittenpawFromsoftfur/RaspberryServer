@@ -203,9 +203,9 @@ void CCore::StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const
 
 void CCore::StringRemove(char *pSource, size_t Len, const char *pRem)
 {
-	int i = 0;
 	int remLen = strnlen(pRem, Len);
 	int remove = false;
+	int i = 0;
 
 	while (1)
 	{
@@ -268,10 +268,9 @@ void CCore::StringToLower(char *pSource, size_t Len)
 
 int CCore::CheckStringAscii(const char *pString, size_t Len)
 {
-	int i = 0;
 	char ch = 0;
 
-	for (i = 0; i < Len; ++i)
+	for (int i = 0; i < Len; ++i)
 	{
 		ch = pString[i];
 
@@ -289,6 +288,14 @@ int CCore::CheckStringAscii(const char *pString, size_t Len)
 int CCore::IsLetter(char Char)
 {
 	if (Char < 65 || (Char > 90 && Char < 97) || Char > 122)
+		return false;
+
+	return true;
+}
+
+int CCore::IsNumber(char Char)
+{
+	if (Char < 48 || Char > 57)
 		return false;
 
 	return true;
