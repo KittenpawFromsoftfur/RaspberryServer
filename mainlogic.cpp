@@ -66,6 +66,24 @@ int CMainlogic::EntryPoint()
     return OK;
 }
 
+int CMainlogic::SetThreadStatus(E_THREADS ThreadIndex, E_THREADSTATUS Status)
+{
+    if ((ThreadIndex < 0 || ThreadIndex >= ARRAYSIZE(m_aThreadStatus)))
+    {
+        m_Log.Log("%s: Failed to set thread status [%d] to %d\n", __FUNCTION__, ThreadIndex, Status);
+        return ERROR;
+    }
+
+    m_aThreadStatus[ThreadIndex] = Status;
+
+    return OK;
+}
+
+void CMainlogic::RequestApplicationExit()
+{
+    m_DoExitApplication = true;
+}
+
 int CMainlogic::Keyboardcontrol()
 {
     char ch = 0;
@@ -115,22 +133,4 @@ int CMainlogic::ExitApplication()
         return ERROR;
 
     return OK;
-}
-
-int CMainlogic::SetThreadStatus(E_THREADS ThreadIndex, E_THREADSTATUS Status)
-{
-    if ((ThreadIndex < 0 || ThreadIndex >= ARRAYSIZE(m_aThreadStatus)))
-    {
-        m_Log.Log("%s: Failed to set thread status [%d] to %d\n", __FUNCTION__, ThreadIndex, Status);
-        return ERROR;
-    }
-
-    m_aThreadStatus[ThreadIndex] = Status;
-
-    return OK;
-}
-
-void CMainlogic::RequestApplicationExit()
-{
-    m_DoExitApplication = true;
 }

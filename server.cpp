@@ -246,6 +246,39 @@ int CServer::Run()
 	return OK;
 }
 
+int CServer::OnExitApplication()
+{
+	int retval = 0;
+	int hasError = false;
+
+	retval = ResetHardware();
+	if (retval != OK)
+		hasError = true;
+
+	// detach update thread
+	retval = CCore::DetachThreadSafely(&m_ThrUpdate);
+	if (retval != OK)
+		m_pMainlogic->m_Log.Log("Failed to detach update thread");
+
+	// cancel client connection threads and close sockets
+	for (int i = 0; i < ARRAYSIZE(m_asSlotInfo); ++i)
+	{
+		retval = CCore::DetachThreadSafely(&m_asSlotInfo[i].thrClientConnection);
+		if (retval != OK)
+			m_pMainlogic->m_Log.Log("Failed to detach client connection thread");
+
+		CloseClientSocket(&m_asSlotInfo[i]);
+	}
+
+	// close server socket
+	close(m_FDListen);
+
+	if (hasError)
+		return ERROR;
+
+	return OK;
+}
+
 void CServer::SpawnClientConnection(unsigned long ClientIP, int FDConnection, int SlotIndex)
 {
 	S_SLOTINFO *psSlotInfo = &m_asSlotInfo[SlotIndex];
@@ -402,39 +435,6 @@ int CServer::Update()
 	}
 }
 
-int CServer::OnExitApplication()
-{
-	int retval = 0;
-	int hasError = false;
-
-	retval = ResetHardware();
-	if (retval != OK)
-		hasError = true;
-
-	// detach update thread
-	retval = CCore::DetachThreadSafely(&m_ThrUpdate);
-	if (retval != OK)
-		m_pMainlogic->m_Log.Log("Failed to detach update thread");
-
-	// cancel client connection threads and close sockets
-	for (int i = 0; i < ARRAYSIZE(m_asSlotInfo); ++i)
-	{
-		retval = CCore::DetachThreadSafely(&m_asSlotInfo[i].thrClientConnection);
-		if (retval != OK)
-			m_pMainlogic->m_Log.Log("Failed to detach client connection thread");
-
-		CloseClientSocket(&m_asSlotInfo[i]);
-	}
-
-	// close server socket
-	close(m_FDListen);
-
-	if (hasError)
-		return ERROR;
-
-	return OK;
-}
-
 int CServer::ParseMessage(S_SLOTINFO *psSlotInfo, const char *pMsg, char *pResp, size_t LenResp)
 {
 	char *pToken = 0;
@@ -475,21 +475,12 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 	int randNr = 0;
 	int commandExecutable = false;
 	int commandVisible = false;
-	int commandCorrect = false;
 	int respondCommandUnknown = false;
 	int respondParametersWrong = false;
 	char aRead[CSERVER_MAX_LEN_LINES] = {0};
 	int pinNumber = 0;
 	int pinState = 0;
 	int isName = 0;
-	int wrongCredentials = false;
-	int doBan = false;
-	time_t banTime = 0;
-	struct tm sTime = {0};
-	int susAttempts = 0;
-	char aFullMessage[CSERVER_NET_BUFFERSIZE] = {0};
-	char aFullParameters[CSERVER_NET_BUFFERSIZE] = {0};
-	char *pRest = 0;
 
 	// look for command
 	for (int i = 0; i < ARRAYSIZE(m_asCommands); ++i)
@@ -526,188 +517,33 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 		switch (m_asCommands[commandIndex].ID)
 		{
 		case COM_HELP:
-			strncat(pResp, "****** Help ******\n" CSERVER_RESPONSE_PREFIX "All commands are case insensitive.\n", LenResp);
-
-			// if logged in, inform as who
-			if (psSlotInfo->loggedIn)
-			{
-				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), CSERVER_RESPONSE_PREFIX "Logged in as '%s'.\n", psSlotInfo->aUsername);
-				strncat(pResp, aBufTemp, LenResp);
-			}
-
-			// if account activated, inform
-			if (psSlotInfo->activated)
-			{
-				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), CSERVER_RESPONSE_PREFIX "Account is activated.\n" CSERVER_RESPONSE_PREFIX "\n");
-				strncat(pResp, aBufTemp, LenResp);
-			}
-			else
-			{
-				strncat(pResp, CSERVER_RESPONSE_PREFIX "\n", LenResp);
-			}
-
-			for (int i = 0; i < ARRAYSIZE(m_asCommands); ++i)
-			{
-				if (!IsCommandVisible(psSlotInfo, m_asCommands[i].flags))
-					continue;
-
-				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), CSERVER_RESPONSE_PREFIX "%s... %s. Usage: '%s%s%s'.", m_asCommands[i].aName, m_asCommands[i].aHelp, m_asCommands[i].aName, strnlen(m_asCommands[i].aParams, ARRAYSIZE(m_asCommands[0].aParams)) > 0 ? " " : "", m_asCommands[i].aParams);
-				strncat(pResp, aBufTemp, LenResp);
-
-				// don't give example if no params needed
-				if (strnlen(m_asCommands[i].aExample, ARRAYSIZE(m_asCommands[0].aExample)) > 0)
-				{
-					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), " Example: '%s %s'\n", m_asCommands[i].aName, m_asCommands[i].aExample);
-					strncat(pResp, aBufTemp, LenResp);
-				}
-				else
-				{
-					strncat(pResp, "\n", LenResp);
-				}
-			}
-
-			strncat(pResp, CSERVER_RESPONSE_PREFIX "******************", LenResp);
+			ComHelp(psSlotInfo, pResp, LenResp, aBufTemp, ARRAYSIZE(aBufTemp));
 			break;
 
 		case COM_ACTIVATEACCOUNT:
-			// check if the passphrase is correct
-			if (CCore::StringCompareNocase(aaToken[1], CSERVER_COM_ACTIVATE_PASS1, ARRAYSIZE(aaToken[0])) == 0 &&
-				CCore::StringCompareNocase(aaToken[2], CSERVER_COM_ACTIVATE_PASS2, ARRAYSIZE(aaToken[0])) == 0 &&
-				CCore::StringCompareNocase(aaToken[3], CSERVER_COM_ACTIVATE_PASS3, ARRAYSIZE(aaToken[0])) == 0)
-				commandCorrect = true;
-
-			if (commandCorrect)
-			{
-				retval = WriteKey(psSlotInfo, FILETYPE_ACCOUNT, ACCKEY_ACTIVATED, "1", pResp, LenResp);
-				if (retval != OK)
-				{
-					m_pMainlogic->m_Log.Log("Slot[%d] Failed to activate account '%s'", psSlotInfo->slotIndex, psSlotInfo->aUsername);
-				}
-				else
-				{
-					psSlotInfo->activated = true;
-					strncat(pResp, CSERVER_COM_ACTIVATE_RESPONSE "! Account activated!", LenResp);
-					m_pMainlogic->m_Log.Log("Slot[%d] Account '%s' has been activated", psSlotInfo->slotIndex, psSlotInfo->aUsername);
-				}
-			}
-			else
-			{
+			retval = ComActivateaccount(psSlotInfo, pResp, LenResp, aaToken[1], aaToken[2], aaToken[3], ARRAYSIZE(aaToken[0]));
+			if (retval != OK)
 				respondCommandUnknown = true;
-			}
 			break;
 
 		case COM_REGISTER:
-			retval = AccountAction(ACCACTION_REGISTER, psSlotInfo, aaToken[1], aaToken[2], NULL, pResp, LenResp);
-			if (retval != OK)
-			{
-				m_pMainlogic->m_Log.Log("Slot[%d] Failed to register <%s> <%s>", psSlotInfo->slotIndex, aaToken[1], aaToken[2]);
-			}
-			else
-			{
-				m_pMainlogic->m_Log.Log("Slot[%d] Registered user <%s> <%s>", psSlotInfo->slotIndex, aaToken[1], aaToken[2]);
-				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Successfully registered, please log in!");
-				strncat(pResp, aBufTemp, LenResp);
-			}
+			ComRegister(psSlotInfo, pResp, LenResp, aBufTemp, ARRAYSIZE(aBufTemp), aaToken[1], aaToken[2]);
 			break;
 
 		case COM_LOGIN:
-			retval = AccountAction(ACCACTION_LOGIN, psSlotInfo, aaToken[1], aaToken[2], &wrongCredentials, pResp, LenResp);
-			if (retval != OK)
-			{
-				if (wrongCredentials) // if the reason for fail is "wrong credentials"
-				{
-					psSlotInfo->failedLogins++;
-					retval = AddSuspiciousIP(psSlotInfo->clientIP);
-					if (retval != OK)
-					{
-						m_pMainlogic->m_Log.Log("Slot[%d] Unable to add suspicious IP '%s', safety mesure: Exit application", psSlotInfo->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)));
-						m_pMainlogic->RequestApplicationExit();
-					}
-				}
-
-				susAttempts = GetSuspiciousAttempts(psSlotInfo->clientIP);
-				m_pMainlogic->m_Log.Log("Slot[%d] Failed to log in with '%s' '%s', failed logins: %d/%d, total attempts of '%s': %d/%d", psSlotInfo->slotIndex, aaToken[1], aaToken[2], psSlotInfo->failedLogins, CSERVER_MAX_FAILED_LOGINS, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), susAttempts, CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS);
-
-				// check if IP ban necessary
-				if (susAttempts >= CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS)
-				{
-					doBan = true;
-					banTime = CSERVER_IP_BAN_DURATION_SUSPICIOUS;
-				}
-				else if (psSlotInfo->failedLogins >= CSERVER_MAX_FAILED_LOGINS)
-				{
-					doBan = true;
-					banTime = CSERVER_IP_BAN_DURATION_FAILEDLOGINS;
-				}
-
-				// check if IP ban necessary by failed attempts
-				if (doBan)
-				{
-					retval = BanIP(psSlotInfo->clientIP, banTime);
-					if (retval != OK)
-					{
-						m_pMainlogic->m_Log.Log("Slot[%d] Unable to ban IP '%s', safety mesure: Exit application", psSlotInfo->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)));
-						m_pMainlogic->RequestApplicationExit();
-					}
-					else
-					{
-						psSlotInfo->banned = true;
-						sTime = *localtime(&banTime);
-						m_pMainlogic->m_Log.Log("Slot[%d] Banned IP '%s' for %dh %dm %ds", psSlotInfo->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
-						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "\n" CSERVER_RESPONSE_PREFIX "You have been banned for %dh %dm %ds", sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
-						strncat(pResp, aBufTemp, LenResp);
-					}
-				}
-			}
-			else
-			{
-				m_pMainlogic->m_Log.Log("Slot[%d] Account '%s' logged in", psSlotInfo->slotIndex, psSlotInfo->aUsername);
-				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Welcome back %s", aaToken[1]);
-				strncat(pResp, aBufTemp, LenResp);
-
-				// activated account becomes notified of elevated status
-				if (psSlotInfo->activated)
-					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), ", your account is activated!");
-				else
-					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "!");
-
-				strncat(pResp, aBufTemp, LenResp);
-			}
+			ComLogin(psSlotInfo, pResp, LenResp, aBufTemp, ARRAYSIZE(aBufTemp), aaToken[1], aaToken[2]);
 			break;
 
 		case COM_LOGOUT:
-			retval = AccountAction(ACCACTION_LOGOUT, psSlotInfo, NULL, NULL, NULL, pResp, LenResp);
-			if (retval != OK)
-			{
-				m_pMainlogic->m_Log.Log("Slot[%d] Failed to log out with account '%s'", psSlotInfo->slotIndex, psSlotInfo->aUsername);
-			}
-			else
-			{
-				m_pMainlogic->m_Log.Log("Slot[%d] Account logged out", psSlotInfo->slotIndex);
-				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Logged out");
-				strncat(pResp, aBufTemp, LenResp);
-			}
+			ComLogout(psSlotInfo, pResp, LenResp, aBufTemp, ARRAYSIZE(aBufTemp));
 			break;
 
 		case COM_SHUTDOWN:
-			m_pMainlogic->m_Log.Log("Slot[%d] Has shut down the server", psSlotInfo->slotIndex);
-			m_pMainlogic->RequestApplicationExit();
+			ComShutdown(psSlotInfo);
 			break;
 
 		case COM_RUN:
-			// remove command from parameters
-			strncpy(aFullMessage, pMsgFull, ARRAYSIZE(aFullMessage));
-			pRest = aFullMessage;
-			strtok_r(pRest, " ", &pRest);
-			strncpy(aFullParameters, pRest, ARRAYSIZE(aFullParameters));
-
-			m_pMainlogic->m_Log.Log("Slot[%d] Running command '%s'...", psSlotInfo->slotIndex, aFullParameters);
-
-			retval = system(aFullParameters);
-
-			m_pMainlogic->m_Log.Log("Slot[%d] Command returned %d", psSlotInfo->slotIndex, retval);
-			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "'%s' returned %d", aFullParameters, retval);
-			strncat(pResp, aBufTemp, LenResp);
+			ComRun(psSlotInfo, pResp, LenResp, aBufTemp, ARRAYSIZE(aBufTemp), pMsgFull);
 			break;
 
 		case COM_DELETE:
@@ -874,7 +710,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, GPIO number must be a number");
 				strncat(pResp, aBufTemp, LenResp);
 			} // number must be in range
-			else if (!m_Hardware.IsGpioValid(pinNumber))
+			else if (!m_Hardware.IsIOValid(CHardware::GPIO, pinNumber))
 			{
 				m_pMainlogic->m_Log.Log("Slot[%d] Error, GPIO number must be " CSERVER_COM_GPIO_RANGE, psSlotInfo->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, GPIO number must be " CSERVER_COM_GPIO_RANGE);
@@ -937,7 +773,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 				for (int i = 0; i <= 31; ++i)
 				{
 					// skip non-GPIO and i2c-1 pins
-					if (!m_Hardware.IsGpioValid(i))
+					if (!m_Hardware.IsIOValid(CHardware::GPIO, i))
 						continue;
 
 					retval = ReadKey(psSlotInfo->aUsername, FILETYPE_DEFINES_GPIO, (E_ACCOUNTKEYS)i, aRead, ARRAYSIZE(aRead), pResp, LenResp);
@@ -961,7 +797,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 			}
 
 			// check GPIO number
-			if (!m_Hardware.IsGpioValid(pinNumber))
+			if (!m_Hardware.IsIOValid(CHardware::GPIO, pinNumber))
 			{
 				m_pMainlogic->m_Log.Log("Slot[%d] Error, name not found or GPIO number outside " CSERVER_COM_GPIO_RANGE, psSlotInfo->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, name not found or GPIO number outside " CSERVER_COM_GPIO_RANGE);
@@ -1004,21 +840,37 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 				else
 				{
 					// set GPIO
-					m_Hardware.SetGpio(pinNumber, pinState);
-
-					m_pMainlogic->m_Log.Log("Slot[%d] GPIO %s (%d) --> %s", psSlotInfo->slotIndex, aaToken[1], pinNumber, aaToken[2]);
-					snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "GPIO %s (%d) --> %s", aaToken[1], pinNumber, aaToken[2]);
-					strncat(pResp, aBufTemp, LenResp);
+					retval = m_Hardware.SetIO(CHardware::GPIO, pinNumber, (CHardware::E_HWSTATE)pinState);
+					if (retval != OK)
+					{
+						m_pMainlogic->m_Log.Log("Slot[%d] Failed to write GPIO, returned %d", psSlotInfo->slotIndex, retval);
+						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to write GPIO, returned %d", retval);
+						strncat(pResp, aBufTemp, LenResp);
+					}
+					else
+					{
+						m_pMainlogic->m_Log.Log("Slot[%d] GPIO %s (%d) --> %s", psSlotInfo->slotIndex, aaToken[1], pinNumber, aaToken[2]);
+						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "GPIO %s (%d) --> %s", aaToken[1], pinNumber, aaToken[2]);
+						strncat(pResp, aBufTemp, LenResp);
+					}
 				}
 			}
 			break;
 
 		case COM_CLEAR:
-			m_Hardware.ClearGpio();
-
-			m_pMainlogic->m_Log.Log("Slot[%d] Cleared GPIOs", psSlotInfo->slotIndex);
-			snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Cleared GPIOs");
-			strncat(pResp, aBufTemp, LenResp);
+			retval = m_Hardware.ClearIO(CHardware::GPIO);
+			if (retval != OK)
+			{
+				m_pMainlogic->m_Log.Log("Slot[%d] Failed to clear GPIOs, returned %d", psSlotInfo->slotIndex, retval);
+				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to clear GPIOs, returned %d", retval);
+				strncat(pResp, aBufTemp, LenResp);
+			}
+			else
+			{
+				m_pMainlogic->m_Log.Log("Slot[%d] Cleared GPIOs", psSlotInfo->slotIndex);
+				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Cleared GPIOs");
+				strncat(pResp, aBufTemp, LenResp);
+			}
 			break;
 
 		case COM_DEFINE_MOSFET:
@@ -1030,7 +882,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, MOSFET number must be a number");
 				strncat(pResp, aBufTemp, LenResp);
 			} // number must be in range
-			else if (!m_Hardware.IsMosfetValid(pinNumber))
+			else if (!m_Hardware.IsIOValid(CHardware::MOSFET, pinNumber))
 			{
 				m_pMainlogic->m_Log.Log("Slot[%d] Error, MOSFET number must be " CSERVER_COM_MOSFET_RANGE, psSlotInfo->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, MOSFET number must be " CSERVER_COM_MOSFET_RANGE);
@@ -1113,7 +965,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 			}
 
 			// check MOSFET number
-			if (!m_Hardware.IsMosfetValid(pinNumber))
+			if (!m_Hardware.IsIOValid(CHardware::MOSFET, pinNumber))
 			{
 				m_pMainlogic->m_Log.Log("Slot[%d] Error, name not found or MOSFET number outside " CSERVER_COM_MOSFET_RANGE, psSlotInfo->slotIndex);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Error, name not found or MOSFET number outside " CSERVER_COM_MOSFET_RANGE);
@@ -1156,9 +1008,8 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 				else
 				{
 					// set MOSFET
-					retval = m_Hardware.SetMosfet(pinNumber, pinState);
-
-					if (retval != 0)
+					retval = m_Hardware.SetIO(CHardware::MOSFET, pinNumber, (CHardware::E_HWSTATE)pinState);
+					if (retval != OK)
 					{
 						m_pMainlogic->m_Log.Log("Slot[%d] Failed to write MOSFET, returned %d", psSlotInfo->slotIndex, retval);
 						snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to write MOSFET, returned %d", retval);
@@ -1181,9 +1032,8 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 			break;
 
 		case COM_MOSCLEAR:
-			retval = m_Hardware.ClearMosfet();
-
-			if (retval != 0)
+			retval = m_Hardware.ClearIO(CHardware::MOSFET);
+			if (retval != OK)
 			{
 				m_pMainlogic->m_Log.Log("Slot[%d] Failed to clear MOSFETs, returned %d", psSlotInfo->slotIndex, retval);
 				snprintf(aBufTemp, ARRAYSIZE(aBufTemp), "Failed to clear MOSFETs, returned %d", retval);
@@ -1291,11 +1141,13 @@ int CServer::ResetHardware()
 	int retval = 0;
 
 	// clear GPIOs
-	m_Hardware.ClearGpio();
+	retval = m_Hardware.ClearIO(CHardware::GPIO);
+	if (retval != OK)
+		m_pMainlogic->m_Log.Log("%s: Failed to clear GPIOs", __FUNCTION__);
 
 	// clear MOSFETs
-	retval = m_Hardware.ClearMosfet();
-	if (retval != 0)
+	retval = m_Hardware.ClearIO(CHardware::MOSFET);
+	if (retval != OK)
 		m_pMainlogic->m_Log.Log("%s: Failed to clear MOSFETs", __FUNCTION__);
 
 	return retval;
@@ -1895,4 +1747,213 @@ struct in_addr CServer::GetIPStruct(in_addr_t IP)
 	sInAddr.s_addr = IP;
 
 	return sInAddr;
+}
+
+void CServer::ComHelp(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp)
+{
+	strncat(pResp, "****** Help ******\n" CSERVER_RESPONSE_PREFIX "All commands are case insensitive.\n", LenResp);
+
+	// if logged in, inform as who
+	if (psSlotInfo->loggedIn)
+	{
+		snprintf(pBufTemp, LenBufTemp, CSERVER_RESPONSE_PREFIX "Logged in as '%s'.\n", psSlotInfo->aUsername);
+		strncat(pResp, pBufTemp, LenResp);
+	}
+
+	// if account activated, inform
+	if (psSlotInfo->activated)
+	{
+		snprintf(pBufTemp, LenBufTemp, CSERVER_RESPONSE_PREFIX "Account is activated.\n" CSERVER_RESPONSE_PREFIX "\n");
+		strncat(pResp, pBufTemp, LenResp);
+	}
+	else
+	{
+		strncat(pResp, CSERVER_RESPONSE_PREFIX "\n", LenResp);
+	}
+
+	for (int i = 0; i < ARRAYSIZE(m_asCommands); ++i)
+	{
+		if (!IsCommandVisible(psSlotInfo, m_asCommands[i].flags))
+			continue;
+
+		snprintf(pBufTemp, LenBufTemp, CSERVER_RESPONSE_PREFIX "%s... %s. Usage: '%s%s%s'.", m_asCommands[i].aName, m_asCommands[i].aHelp, m_asCommands[i].aName, strnlen(m_asCommands[i].aParams, ARRAYSIZE(m_asCommands[0].aParams)) > 0 ? " " : "", m_asCommands[i].aParams);
+		strncat(pResp, pBufTemp, LenResp);
+
+		// don't give example if no params needed
+		if (strnlen(m_asCommands[i].aExample, ARRAYSIZE(m_asCommands[0].aExample)) > 0)
+		{
+			snprintf(pBufTemp, LenBufTemp, " Example: '%s %s'\n", m_asCommands[i].aName, m_asCommands[i].aExample);
+			strncat(pResp, pBufTemp, LenResp);
+		}
+		else
+		{
+			strncat(pResp, "\n", LenResp);
+		}
+	}
+
+	strncat(pResp, CSERVER_RESPONSE_PREFIX "******************", LenResp);
+}
+
+int CServer::ComActivateaccount(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, const char *pPhrase1, const char *pPhrase2, const char *pPhrase3, size_t LenPhrases)
+{
+	int retval = 0;
+
+	// check if the passphrase is correct
+	if (CCore::StringCompareNocase(pPhrase1, CSERVER_COM_ACTIVATE_PASS1, LenPhrases) == 0 &&
+		CCore::StringCompareNocase(pPhrase2, CSERVER_COM_ACTIVATE_PASS2, LenPhrases) == 0 &&
+		CCore::StringCompareNocase(pPhrase3, CSERVER_COM_ACTIVATE_PASS3, LenPhrases) == 0)
+	{
+		retval = WriteKey(psSlotInfo, FILETYPE_ACCOUNT, ACCKEY_ACTIVATED, "1", pResp, LenResp);
+		if (retval != OK)
+		{
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to activate account '%s'", psSlotInfo->slotIndex, psSlotInfo->aUsername);
+		}
+		else
+		{
+			psSlotInfo->activated = true;
+			strncat(pResp, CSERVER_COM_ACTIVATE_RESPONSE "! Account activated!", LenResp);
+			m_pMainlogic->m_Log.Log("Slot[%d] Account '%s' has been activated", psSlotInfo->slotIndex, psSlotInfo->aUsername);
+		}
+	}
+	else
+	{
+		return ERROR;
+	}
+
+	return OK;
+}
+
+void CServer::ComRegister(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pUsername, char *pPassword)
+{
+	int retval = 0;
+
+	retval = AccountAction(ACCACTION_REGISTER, psSlotInfo, pUsername, pPassword, NULL, pResp, LenResp);
+	if (retval != OK)
+	{
+		m_pMainlogic->m_Log.Log("Slot[%d] Failed to register <%s> <%s>", psSlotInfo->slotIndex, pUsername, pPassword);
+	}
+	else
+	{
+		m_pMainlogic->m_Log.Log("Slot[%d] Registered user <%s> <%s>", psSlotInfo->slotIndex, pUsername, pPassword);
+		snprintf(pBufTemp, LenBufTemp, "Successfully registered, please log in!");
+		strncat(pResp, pBufTemp, LenResp);
+	}
+}
+
+void CServer::ComLogin(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pUsername, char *pPassword)
+{
+	int retval = 0;
+	int wrongCredentials = false;
+	int susAttempts = 0;
+	int doBan = false;
+	time_t banTime = 0;
+	struct tm sTime = {0};
+
+	retval = AccountAction(ACCACTION_LOGIN, psSlotInfo, pUsername, pPassword, &wrongCredentials, pResp, LenResp);
+	if (retval != OK)
+	{
+		if (wrongCredentials) // if the reason for fail is "wrong credentials"
+		{
+			psSlotInfo->failedLogins++;
+			retval = AddSuspiciousIP(psSlotInfo->clientIP);
+			if (retval != OK)
+			{
+				m_pMainlogic->m_Log.Log("Slot[%d] Unable to add suspicious IP '%s', safety mesure: Exit application", psSlotInfo->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)));
+				m_pMainlogic->RequestApplicationExit();
+			}
+		}
+
+		susAttempts = GetSuspiciousAttempts(psSlotInfo->clientIP);
+		m_pMainlogic->m_Log.Log("Slot[%d] Failed to log in with '%s' '%s', failed logins: %d/%d, total attempts of '%s': %d/%d", psSlotInfo->slotIndex, pUsername, pPassword, psSlotInfo->failedLogins, CSERVER_MAX_FAILED_LOGINS, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), susAttempts, CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS);
+
+		// check if IP ban necessary
+		if (susAttempts >= CSERVER_MAX_FAILED_LOGINS_SUSPICIOUS)
+		{
+			doBan = true;
+			banTime = CSERVER_IP_BAN_DURATION_SUSPICIOUS;
+		}
+		else if (psSlotInfo->failedLogins >= CSERVER_MAX_FAILED_LOGINS)
+		{
+			doBan = true;
+			banTime = CSERVER_IP_BAN_DURATION_FAILEDLOGINS;
+		}
+
+		// check if IP ban necessary by failed attempts
+		if (doBan)
+		{
+			retval = BanIP(psSlotInfo->clientIP, banTime);
+			if (retval != OK)
+			{
+				m_pMainlogic->m_Log.Log("Slot[%d] Unable to ban IP '%s', safety mesure: Exit application", psSlotInfo->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)));
+				m_pMainlogic->RequestApplicationExit();
+			}
+			else
+			{
+				psSlotInfo->banned = true;
+				sTime = *localtime(&banTime);
+				m_pMainlogic->m_Log.Log("Slot[%d] Banned IP '%s' for %dh %dm %ds", psSlotInfo->slotIndex, inet_ntoa(GetIPStruct(psSlotInfo->clientIP)), sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
+				snprintf(pBufTemp, LenBufTemp, "\n" CSERVER_RESPONSE_PREFIX "You have been banned for %dh %dm %ds", sTime.tm_hour - 1, sTime.tm_min, sTime.tm_sec);
+				strncat(pResp, pBufTemp, LenResp);
+			}
+		}
+	}
+	else
+	{
+		m_pMainlogic->m_Log.Log("Slot[%d] Account '%s' logged in", psSlotInfo->slotIndex, psSlotInfo->aUsername);
+		snprintf(pBufTemp, LenBufTemp, "Welcome back %s", pUsername);
+		strncat(pResp, pBufTemp, LenResp);
+
+		// activated account becomes notified of elevated status
+		if (psSlotInfo->activated)
+			snprintf(pBufTemp, LenBufTemp, ", your account is activated!");
+		else
+			snprintf(pBufTemp, LenBufTemp, "!");
+
+		strncat(pResp, pBufTemp, LenResp);
+	}
+}
+
+void CServer::ComLogout(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp)
+{
+	int retval = 0;
+
+	retval = AccountAction(ACCACTION_LOGOUT, psSlotInfo, NULL, NULL, NULL, pResp, LenResp);
+	if (retval != OK)
+	{
+		m_pMainlogic->m_Log.Log("Slot[%d] Failed to log out with account '%s'", psSlotInfo->slotIndex, psSlotInfo->aUsername);
+	}
+	else
+	{
+		m_pMainlogic->m_Log.Log("Slot[%d] Account logged out", psSlotInfo->slotIndex);
+		snprintf(pBufTemp, LenBufTemp, "Logged out");
+		strncat(pResp, pBufTemp, LenResp);
+	}
+}
+
+void CServer::ComShutdown(S_SLOTINFO *psSlotInfo)
+{
+	m_pMainlogic->m_Log.Log("Slot[%d] Has shut down the server", psSlotInfo->slotIndex);
+	m_pMainlogic->RequestApplicationExit();
+}
+
+void CServer::ComRun(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pMsgFull)
+{
+	int retval = 0;
+	char aFullMessage[CSERVER_NET_BUFFERSIZE] = {0};
+	char aFullParameters[CSERVER_NET_BUFFERSIZE] = {0};
+	char *pRest = 0;
+
+	// remove command from parameters
+	strncpy(aFullMessage, pMsgFull, ARRAYSIZE(aFullMessage));
+	pRest = aFullMessage;
+	strtok_r(pRest, " ", &pRest);
+	strncpy(aFullParameters, pRest, ARRAYSIZE(aFullParameters));
+
+	m_pMainlogic->m_Log.Log("Slot[%d] Running command '%s'...", psSlotInfo->slotIndex, aFullParameters);
+
+	retval = system(aFullParameters);
+
+	m_pMainlogic->m_Log.Log("Slot[%d] Command returned %d", psSlotInfo->slotIndex, retval);
+	snprintf(pBufTemp, LenBufTemp, "'%s' returned %d", aFullParameters, retval);
+	strncat(pResp, pBufTemp, LenResp);
 }

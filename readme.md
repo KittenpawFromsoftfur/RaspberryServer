@@ -1,7 +1,35 @@
-# Description
+l# Description
 This program starts a server on your raspberry, that allows you to remote control your GPIO pins and your "Eight MOSFETS 8-Layer Stackable HAT for Raspberry Pi" from https://sequentmicrosystems.com/products/eight-mosfets-8-layer-stackable-card-for-raspberry-pi
 
 The program features a login system with IP bans and secret phrase that has to be entered for every registered account in order to unlock full functionality.
+
+The following is the output of the 'help' function when you are not logged in.
+```
+> ****** Help ******
+> All commands are case insensitive.
+>
+> help... Lists this help. Usage: 'help'.
+> register... Registers an account, 1 - 16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
+> login... Logs an account in, 1 - 16 characters. Usage: 'login <username> <password>'. Example: 'login bob ross'
+> echo... The echo which echoes. Usage: 'echo'.
+> exit... Closes your connection. Usage: 'exit'.
+> ******************
+```
+
+The following is the output of the 'help' function for a locked account.
+```
+> help
+> ****** Help ******
+> All commands are case insensitive.
+> Logged in as 'a'.
+>
+> help... Lists this help. Usage: 'help'.
+> register... Registers an account, 1 - 16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
+> logout... Logs an account out. Usage: 'logout'.
+> echo... The echo which echoes. Usage: 'echo'.
+> exit... Closes your connection. Usage: 'exit'.
+> ******************
+```
 
 The following is the output of the 'help' function for an unlocked account.
 ```
@@ -24,21 +52,6 @@ The following is the output of the 'help' function for an unlocked account.
 > mosset... Sets the status of a mosfet. Usage: 'mosset <mosfet number 1 - 8/name> <1/0/on/off/high/low>'. Example: 'mosset lawnmower on'
 > mosread... (Not yet implemented!) Reads the status of all mosfets. Usage: 'mosread'.
 > mosclear... Clears the status of all mosfets. Usage: 'mosclear'.
-> echo... The echo which echoes. Usage: 'echo'.
-> exit... Closes your connection. Usage: 'exit'.
-> ******************
-```
-
-The following is the output of the 'help' function for a locked account.
-```
-> help
-> ****** Help ******
-> All commands are case insensitive.
-> Logged in as 'a'.
->
-> help... Lists this help. Usage: 'help'.
-> register... Registers an account, 1 - 16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
-> logout... Logs an account out. Usage: 'logout'.
 > echo... The echo which echoes. Usage: 'echo'.
 > exit... Closes your connection. Usage: 'exit'.
 > ******************
@@ -137,4 +150,10 @@ Keep in mind that disabling a service will remove the symlink from /etc/systemd/
 ## Stop service
 ```
 systemctl stop xserver.service
+```
+
+# Program parameters
+```
+-p... Sets the server port (optional, default 8000)
+-u... Enable uppercase response (optional, default 0)
 ```

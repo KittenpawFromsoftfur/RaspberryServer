@@ -16,70 +16,78 @@ CHardware::CHardware()
 	for (int i = 0; i < 32; ++i)
 	{
 		// skip non-gpio and i2c-1 pins
-		if (!IsGpioValid(i))
+		if (!IsIOValid(GPIO, i))
 			continue;
 
 		pinMode(i, OUTPUT);
 	}
 }
 
-void CHardware::SetGpio(int Pin, int State)
+bool CHardware::IsIOValid(E_HWTYPE Type, int IONumber)
 {
-	digitalWrite(Pin, State);
+	switch (Type)
+	{
+	case GPIO:
+		if (IONumber < 0 || (IONumber > 7 && IONumber < 10) || (IONumber > 16 && IONumber < 21) || IONumber > 31)
+			return false;
+		break;
+
+	case MOSFET:
+		if (IONumber < 1 || IONumber > 8)
+			return false;
+		break;
+	}
+
+	return true;
 }
 
-int CHardware::SetMosfet(int Pin, int State)
+int CHardware::SetIO(E_HWTYPE Type, int IONumber, E_HWSTATE State)
 {
 	int retval = 0;
 	char aSystemString[CHARDWARE_MAX_LEN_SYSTEMCOMMAND] = {0};
 
-	snprintf(aSystemString, ARRAYSIZE(aSystemString), "8mosind 0 write %d %s", Pin, State == 1 ? "on" : "off");
+	switch (Type)
+	{
+	case GPIO:
+		digitalWrite(IONumber, State);
+		break;
 
-	retval = system(aSystemString);
+	case MOSFET:
+		snprintf(aSystemString, ARRAYSIZE(aSystemString), "8mosind 0 write %d %s", IONumber, State == ON ? "on" : "off");
+		retval = system(aSystemString);
 
-	if (retval != 0)
-		return ERROR;
+		if (retval != 0)
+			return ERROR;
+		break;
+	}
 
 	return OK;
 }
 
-void CHardware::ClearGpio()
-{
-	// clear all pins
-	for (int i = 0; i < 32; ++i)
-	{
-		// skip non-gpio and i2c-1 pins
-		if (!IsGpioValid(i))
-			continue;
-
-		SetGpio(i, LOW);
-	}
-}
-
-int CHardware::ClearMosfet()
+int CHardware::ClearIO(E_HWTYPE Type)
 {
 	int retval = 0;
 
-	retval = system("8mosind 0 write 0");
+	switch (Type)
+	{
+	case GPIO:
+		for (int i = 0; i < 32; ++i)
+		{
+			// skip non-gpio and i2c-1 pins
+			if (!IsIOValid(GPIO, i))
+				continue;
 
-	if (retval != 0)
-		return ERROR;
+			SetIO(GPIO, i, OFF);
+		}
+		break;
+
+	case MOSFET:
+		retval = system("8mosind 0 write 0");
+
+		if (retval != 0)
+			return ERROR;
+		break;
+	}
 
 	return OK;
-}
-
-bool CHardware::IsGpioValid(int Number)
-{
-	if (Number < 0 || (Number > 7 && Number < 10) || (Number > 16 && Number < 21) || Number > 31)
-		return false;
-
-	return true;
-}
-
-bool CHardware::IsMosfetValid(int Number)
-{
-	if (Number < 1 || Number > 8)
-		return false;
-
-	return true;
 }

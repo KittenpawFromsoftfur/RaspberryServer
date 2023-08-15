@@ -180,6 +180,16 @@ private:
 	int GetSuspiciousAttempts(in_addr_t IP);
 	struct in_addr GetIPStruct(in_addr_t IP);
 
+	// command functions
+	void ComHelp(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
+	int ComActivateaccount(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, const char *pPhrase1, const char *pPhrase2, const char *pPhrase3, size_t LenPhrases);
+	void ComRegister(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pUsername, char *pPassword);
+	void ComLogin(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pUsername, char *pPassword);
+	void ComLogout(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
+	void ComShutdown(S_SLOTINFO *psSlotInfo);
+	void ComRun(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pMsgFull);
+
+	// member variables
 	int m_ServerPort;
 	int m_UppercaseResponse;
 	CMainlogic *m_pMainlogic;

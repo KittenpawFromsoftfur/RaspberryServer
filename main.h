@@ -16,5 +16,5 @@
 #define PREFIX_MAINPARAM "-"
 #define MAINPARAM_PORT PREFIX_MAINPARAM "p"              // sets the port of the server
 #define MAINPARAM_UPPERCASERESPONSE PREFIX_MAINPARAM "u" // sets the uppercase response of the server
-#define DESCRIPTION_PARAM_PORT "Server port (optional, default " STRINGIFY_VALUE(SERVER_PORT_DEFAULT) ")"
+#define DESCRIPTION_PARAM_PORT "Sets the server port (optional, default " STRINGIFY_VALUE(SERVER_PORT_DEFAULT) ")"
 #define DESCRIPTION_PARAM_UPPERCASERESPONSE "Enable uppercase response (optional, default 0)"

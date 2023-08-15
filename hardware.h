@@ -6,11 +6,20 @@
 class CHardware
 {
 public:
+    enum E_HWTYPE
+    {
+        GPIO,
+        MOSFET,
+    };
+
+    enum E_HWSTATE
+    {
+        OFF = 0,
+        ON = 1,
+    };
+
     CHardware();
-    void SetGpio(int Pin, int State);
-    int SetMosfet(int Pin, int State);
-    void ClearGpio();
-    int ClearMosfet();
-    bool IsGpioValid(int Number);
-    bool IsMosfetValid(int Number);
+    bool IsIOValid(E_HWTYPE Type, int IONumber);
+    int SetIO(E_HWTYPE Type, int IONumber, E_HWSTATE State);
+    int ClearIO(E_HWTYPE Type);
 };

@@ -6,14 +6,16 @@
 
 /* TODO
 	GENERAL
-		autostart file / bild needs update for main parameters
-		What happens to CPU if we launch per autostart?
-		Clean up everything / Sort functions properly / Code formatter { 0 }
-		readme details about parameters and other stuffs...
+		Server put commands into functions
+		unused local variables in CServer::EvaluateTokens()
+		int to bool whenever possible (accountaction, ...)
+		#define and #command mosread --> read mosfet... Best check every single define and enum
+		char --> const char etc... whenever possible
 		set_.../clear_... --> set .../clear ...
 		gpio/mosfet --> set single or multiple
 		gpio/mosfet --> read single or multiple
 		Test every single function again
+		update readme
 
 	BUGS
 		writekey: when less lines than needed, it will take the last line instead of throwing error or making the necessary amount of lines
