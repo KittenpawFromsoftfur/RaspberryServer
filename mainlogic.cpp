@@ -3,7 +3,7 @@
 
 #include "mainlogic.h"
 
-CMainlogic::CMainlogic(const char *pLogFolder, const char *pLogName, int ServerPort, int UppercaseResponse) : m_Log(pLogFolder, pLogName)
+CMainlogic::CMainlogic(const char *pLogFolder, const char *pLogName, int ServerPort, bool UppercaseResponse) : m_Log(pLogFolder, pLogName)
 {
     m_DoExitApplication = false;
     memset(m_aThreadStatus, 0, ARRAYSIZE(m_aThreadStatus) * sizeof(int));

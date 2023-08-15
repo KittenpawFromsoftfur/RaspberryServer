@@ -120,7 +120,7 @@ int CCore::CountFilesDirectory(const char *pDirname)
 }
 
 // true=exists, false=does not exist, ERROR=error
-int CCore::CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename)
+bool CCore::CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename)
 {
 	DIR *pDir = 0;
 	struct dirent *psDirent = 0;
@@ -171,7 +171,7 @@ void CCore::StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const
 {
 	int destIndex = 0;
 	int ignLen = strnlen(pIgnore, CCORE_MAXLEN_STRINGIGNORE);
-	int ignore = false;
+	bool ignore = false;
 
 	for (int i = 0; i < Len; ++i)
 	{
@@ -204,7 +204,7 @@ void CCore::StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const
 void CCore::StringRemove(char *pSource, size_t Len, const char *pRem)
 {
 	int remLen = strnlen(pRem, Len);
-	int remove = false;
+	bool remove = false;
 	int i = 0;
 
 	while (1)
@@ -266,7 +266,7 @@ void CCore::StringToLower(char *pSource, size_t Len)
 	}
 }
 
-int CCore::CheckStringAscii(const char *pString, size_t Len)
+bool CCore::CheckStringAscii(const char *pString, size_t Len)
 {
 	char ch = 0;
 
@@ -285,7 +285,7 @@ int CCore::CheckStringAscii(const char *pString, size_t Len)
 	return true;
 }
 
-int CCore::IsLetter(char Char)
+bool CCore::IsLetter(char Char)
 {
 	if (Char < 65 || (Char > 90 && Char < 97) || Char > 122)
 		return false;
@@ -293,7 +293,7 @@ int CCore::IsLetter(char Char)
 	return true;
 }
 
-int CCore::IsNumber(char Char)
+bool CCore::IsNumber(char Char)
 {
 	if (Char < 48 || Char > 57)
 		return false;
@@ -320,7 +320,7 @@ int CCore::MeasureStart()
 	return OK;
 }
 
-double CCore::MeasureStop(int Print)
+double CCore::MeasureStop(bool Print)
 {
 	struct timespec sTimeStop = {0};
 	double diff = 0;

@@ -6,18 +6,7 @@
 
 /* TODO
 	GENERAL
-		int to bool whenever possible (accountaction, ...)
-		#define and #command mosread --> read mosfet... Best check every single define and enum
-		use more "respondparameterswrong"
-		char --> const char etc... whenever possible
-		int --> size_t whenever possible
-		ComDelete() make more elegant
-		set_.../clear_... --> set .../clear ...
-		gpio/mosfet --> set single or multiple
-		gpio/mosfet --> read single or multiple
-		sort command functions and in switch statement
-		Check help output again
-		Test every single function again
+		Test every single function again (Laststop: ComIOAction Set <name> name will always be 0 if not existing)
 		update readme
 
 	BUGS
@@ -28,6 +17,10 @@
 
 	END
 		Documentation please!
+
+	FAR FUTURE
+		IO set multiple
+		IO read multiple (https://stackoverflow.com/questions/43116/how-can-i-run-an-external-program-from-c-and-parse-its-output)
 */
 
 int main(int argc, char *argv[])

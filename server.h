@@ -82,7 +82,7 @@ class CMainlogic;
 class CServer
 {
 public:
-	CServer(CMainlogic *pMainlogic, int ServerPort, int UppercaseResponse);
+	CServer(CMainlogic *pMainlogic, int ServerPort, bool UppercaseResponse);
 	~CServer();
 	int Run();
 	int OnExitApplication();
@@ -95,13 +95,12 @@ private:
 		COM_REGISTER,
 		COM_LOGIN,
 		COM_LOGOUT,
-		COM_SHUTDOWN,
-		COM_RUN,
-		COM_DELETE,
 		COM_IO_DEFINE,
 		COM_IO_SET,
-		COM_IO_READ,
 		COM_IO_CLEAR,
+		COM_DELETE,
+		COM_SHUTDOWN,
+		COM_RUN,
 		COM_ECHO,
 		COM_EXIT,
 		AMOUNT_COMMANDS,
@@ -134,7 +133,6 @@ private:
 	{
 		IOACT_DEFINE,
 		IOACT_SET,
-		IOACT_READ,
 		IOACT_CLEAR,
 	};
 
@@ -167,17 +165,17 @@ private:
 	int Update();
 	int ParseMessage(S_SLOTINFO *psSLotInfo, const char *pMsg, char *pResp, size_t LenResp);
 	void EvaluateTokens(S_SLOTINFO *psSLotInfo, char aaToken[CSERVER_MAX_TOKENS][CSERVER_MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull);
-	int IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags);
-	int IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags);
+	bool IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags);
+	bool IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags);
 	int ResetHardware();
-	void GetFilepath(E_FILETYPES FileType, const char *pUsername, int FilenameOnly, char *pFullpath, size_t LenFullpath);
-	int AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPyword, int *pWrongCredentials, char *pError, size_t LenError);
-	int CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *pError, size_t LenError);
-	int WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, E_ACCOUNTKEYS Key, const char *pValue, char *pError, size_t LenError);
-	int ReadKey(const char *pUsername, E_FILETYPES FileType, E_ACCOUNTKEYS Key, char *pKey, size_t LenKey, char *pError, size_t LenError);
-	int RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pError, size_t LenError);
+	void GetFilepath(E_FILETYPES FileType, const char *pUsername, bool FilenameOnly, char *pFullpath, size_t LenFullpath);
+	int AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPyword, bool *pWrongCredentials, char *pResp, size_t LenResp);
+	int CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *pResp, size_t LenResp);
+	int WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, E_ACCOUNTKEYS Key, const char *pValue, char *pResp, size_t LenResp);
+	int ReadKey(const char *pUsername, E_FILETYPES FileType, E_ACCOUNTKEYS Key, char *pKey, size_t LenKey, char *pResp, size_t LenResp);
+	int RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pResp, size_t LenResp);
 	int BanIP(in_addr_t IP, time_t Duration);
-	int CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime);
+	bool CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime);
 	void CleanOldSession(S_SLOTINFO *psSlotInfo);
 	void CloseClientSocket(S_SLOTINFO *psSlotInfo);
 	void ResetSlot(S_SLOTINFO *psSlotInfo);
@@ -189,19 +187,19 @@ private:
 	// command functions
 	void ComHelp(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
 	int ComActivateAccount(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, const char *pPhrase1, const char *pPhrase2, const char *pPhrase3, size_t LenPhrases);
-	int ComRegister(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pUsername, char *pPassword);
-	int ComLogin(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pUsername, char *pPassword);
+	int ComRegister(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pUsername, const char *pPassword);
+	int ComLogin(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pUsername, const char *pPassword);
 	int ComLogout(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
+	int ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, E_IOACTIONS IOAction, const char *pIOType, const char *pIONumber, const char *pIOParam, size_t LenIOParams);
+	int ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pTarget, size_t LenTarget);
 	void ComShutdown(S_SLOTINFO *psSlotInfo);
 	int ComRun(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pMsgFull);
-	int ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pTarget, size_t LenTarget);
-	int ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, E_IOACTIONS IOAction, char *pIOType, char *pIONumber, char *pIOParam, size_t LenIOParams);
 	void ComEcho(char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
 	void ComExit(S_SLOTINFO *psSlotInfo);
 
 	// member variables
 	int m_ServerPort;
-	int m_UppercaseResponse;
+	bool m_UppercaseResponse;
 	CMainlogic *m_pMainlogic;
 	CHardware m_Hardware;
 	int m_FDListen;
@@ -220,13 +218,12 @@ private:
 			{COM_REGISTER, "register", "Registers an account, " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) "-" STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters", "<username> <password>", "bob ross", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
 			{COM_LOGIN, "login", "Logs an account in, " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) "-" STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters", "<username> <password>", "bob ross", CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
 			{COM_LOGOUT, "logout", "Logs an account out", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDIN},
+			{COM_IO_DEFINE, "define", "Defines the name of an IO (GPIO range = " CSERVER_COM_IORANGE_GPIO "; MOSFET range = " CSERVER_COM_IORANGE_MOSFET "). The name must have " STRINGIFY_VALUE(CSERVER_MIN_LEN_DEFINES) "-" STRINGIFY_VALUE(CSERVER_MAX_LEN_DEFINES) " characters and is case insensitive.", "gpio/mosfet <IO-number> <name>", "gpio 0 fan", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_IO_SET, "set", "Sets the status of an IO (GPIO range = " CSERVER_COM_IORANGE_GPIO "; MOSFET range = " CSERVER_COM_IORANGE_MOSFET "). All IOs are output. Multi setting IOs via name is not supported yet", "<IO-number/name> <1/0/on/off/high/low>", "gpio fan on", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_IO_CLEAR, "clear", "Clears the status of all IOs", "gpio/mosfet", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_DELETE, "delete", "Deletes the program log, your defines, your account or all files", "log/defines/account/all", "log", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
 			{COM_SHUTDOWN, "shutdown", "Shuts down the server", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
 			{COM_RUN, "run", "Runs a console command on the machine", "<command>", "reboot", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_DELETE, "delete", "Deletes the program log, your defines, your account or all files", "log/defines/account/all", "log", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_IO_DEFINE, "define", "Defines the name of an IO (GPIO range = " CSERVER_COM_IORANGE_GPIO "; MOSFET range = " CSERVER_COM_IORANGE_MOSFET "). The name must have " STRINGIFY_VALUE(CSERVER_MIN_LEN_DEFINES) "-" STRINGIFY_VALUE(CSERVER_MAX_LEN_DEFINES) " characters and is case insensitive", "gpio/mosfet <IO-number> <name>", "gpio 0 fan", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_IO_SET, "set", "Sets the status of an IO (GPIO range = " CSERVER_COM_IORANGE_GPIO "; MOSFET range = " CSERVER_COM_IORANGE_MOSFET "). All IOs are output", "<IO-number/name> <1/0/on/off/high/low>", "gpio fan on", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_IO_READ, "read", "Reads the status of all IOs", "gpio/mosfet", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_IO_CLEAR, "clear", "Clears the status of all IOs", "gpio/mosfet", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
 			{COM_ECHO, "echo", "The echo which echoes", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
 			{COM_EXIT, "exit", "Closes your connection", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
 	};

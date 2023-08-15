@@ -33,7 +33,7 @@ public:
         AMOUNT_THREADSTATUS,
     };
 
-    CMainlogic(const char *pLogFolder, const char *pLogName, int ServerPort, int UppercaseResponse);
+    CMainlogic(const char *pLogFolder, const char *pLogName, int ServerPort, bool UppercaseResponse);
     ~CMainlogic();
     int EntryPoint();
     int SetThreadStatus(E_THREADS ThreadIndex, E_THREADSTATUS Status);

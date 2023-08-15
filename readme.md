@@ -3,28 +3,14 @@ This program starts a server on your raspberry, that allows you to remote contro
 
 The program features a login system with IP bans and secret phrase that has to be entered for every registered account in order to unlock full functionality.
 
-The following is the output of the 'help' function when you are not logged in.
-```
-> ****** Help ******
-> All commands are case insensitive.
->
-> help... Lists this help. Usage: 'help'.
-> register... Registers an account, 1 - 16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
-> login... Logs an account in, 1 - 16 characters. Usage: 'login <username> <password>'. Example: 'login bob ross'
-> echo... The echo which echoes. Usage: 'echo'.
-> exit... Closes your connection. Usage: 'exit'.
-> ******************
-```
-
 The following is the output of the 'help' function for a locked account.
 ```
-> help
 > ****** Help ******
 > All commands are case insensitive.
-> Logged in as 'a'.
+> Logged in as 'bob'.
 >
 > help... Lists this help. Usage: 'help'.
-> register... Registers an account, 1 - 16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
+> register... Registers an account, 1-16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
 > logout... Logs an account out. Usage: 'logout'.
 > echo... The echo which echoes. Usage: 'echo'.
 > exit... Closes your connection. Usage: 'exit'.
@@ -35,23 +21,18 @@ The following is the output of the 'help' function for an unlocked account.
 ```
 > ****** Help ******
 > All commands are case insensitive.
-> Logged in as 'a'.
-> Account is activated.
+> Logged in as 'bob', your account is activated.
 >
 > help... Lists this help. Usage: 'help'.
 > i... Activates your account and unlocks all commands. Usage: 'i give duck cookie'.
-> register... Registers an account, 1 - 16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
+> register... Registers an account, 1-16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
 > logout... Logs an account out. Usage: 'logout'.
+> define... Defines the name of an IO (GPIO range = 0-7, 10-16, 21-31; MOSFET range = 1-8). The name must have 1-16 characters and is case insensitive. Usage: 'define gpio/mosfet <IO-number> <name>'. Example: 'define gpio 0 fan'
+> set... Sets the status of an IO (GPIO range = 0-7, 10-16, 21-31; MOSFET range = 1-8). All IOs are output. Usage: 'set <IO-number/name> <1/0/on/off/high/low>'. Example: 'set gpio fan on'
+> clear... Clears the status of all IOs. Usage: 'clear gpio/mosfet'.
+> delete... Deletes the program log, your defines, your account or all files. Usage: 'delete log/defines/account/all'. Example: 'delete log'
 > shutdown... Shuts down the server. Usage: 'shutdown'.
 > run... Runs a console command on the machine. Usage: 'run <command>'. Example: 'run reboot'
-> delete... Deletes the program log, your defines, your account or all files. Usage: 'delete log/defines/account/all'. Example: 'delete log'
-> define... Defines the name of a gpio pin. The name must begin with a letter, and have 1 - 16 characters. Name is case insensitive. Usage: 'define <pin number 0 - 7, 10 - 16, 21 - 31> <name>'. Example: 'define 0 fan'
-> set... Sets the status of a gpio pin, all pins are output. Usage: 'set <pin number 0 - 7, 10 - 16, 21 - 31/name> <1/0/on/off/high/low>'. Example: 'set fan on'
-> clear... Clears the status of all gpio pins. Usage: 'clear'.
-> mosdefine... Defines the name of a mosfet. The name must begin with a letter, and have 1 - 16 characters. Name is case insensitive. Usage: 'mosdefine <mosfet number 1 - 8> <name>'. Example: 'mosdefine 1 lawnmower'
-> mosset... Sets the status of a mosfet. Usage: 'mosset <mosfet number 1 - 8/name> <1/0/on/off/high/low>'. Example: 'mosset lawnmower on'
-> mosread... (Not yet implemented!) Reads the status of all mosfets. Usage: 'mosread'.
-> mosclear... Clears the status of all mosfets. Usage: 'mosclear'.
 > echo... The echo which echoes. Usage: 'echo'.
 > exit... Closes your connection. Usage: 'exit'.
 > ******************
