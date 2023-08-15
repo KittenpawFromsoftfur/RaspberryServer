@@ -10,6 +10,7 @@ public:
     {
         GPIO,
         MOSFET,
+        INVALID,
     };
 
     enum E_HWSTATE

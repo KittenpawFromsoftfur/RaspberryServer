@@ -6,10 +6,9 @@
 
 /* TODO
 	GENERAL
-		Server put commands into functions
-		unused local variables in CServer::EvaluateTokens()
 		int to bool whenever possible (accountaction, ...)
 		#define and #command mosread --> read mosfet... Best check every single define and enum
+		use more "respondparameterswrong"
 		char --> const char etc... whenever possible
 		int --> size_t whenever possible
 		ComDelete() make more elegant
