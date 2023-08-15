@@ -11,9 +11,13 @@
 		int to bool whenever possible (accountaction, ...)
 		#define and #command mosread --> read mosfet... Best check every single define and enum
 		char --> const char etc... whenever possible
+		int --> size_t whenever possible
+		ComDelete() make more elegant
 		set_.../clear_... --> set .../clear ...
 		gpio/mosfet --> set single or multiple
 		gpio/mosfet --> read single or multiple
+		sort command functions and in switch statement
+		Check help output again
 		Test every single function again
 		update readme
 

@@ -152,7 +152,7 @@ Keep in mind that disabling a service will remove the symlink from /etc/systemd/
 systemctl stop xserver.service
 ```
 
-# Program parameters
+# Program call parameters
 ```
 -p... Sets the server port (optional, default 8000)
 -u... Enable uppercase response (optional, default 0)

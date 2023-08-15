@@ -25,7 +25,7 @@
 
 #define CSERVER_CHARRANGE_ASCII_READABLE "[Aa-Zz, 0-9]"
 
-#define CSERVER_MAX_ECHOES 25
+#define CSERVER_MAX_ECHOES 22
 #define CSERVER_MAX_LEN_ECHO 128
 
 #define CSERVER_DELAY_RECEIVE 10000		 // 10ms
@@ -68,8 +68,8 @@
 #define CSERVER_SUSPICIOUS_FALLOFF_TIME TIME_TO_SECONDS_HMS(0, 30, 0) // Is also reset when a ban ends or a login with an activated account succeeds
 
 // command specific
-#define CSERVER_COM_GPIO_RANGE "0 - 7, 10 - 16, 21 - 31"
-#define CSERVER_COM_MOSFET_RANGE "1 - 8"
+#define CSERVER_COM_GPIO_RANGE "0-7, 10-16, 21-31"
+#define CSERVER_COM_MOSFET_RANGE "1-8"
 
 #define CSERVER_COM_ACTIVATE_PASS1 "give"
 #define CSERVER_COM_ACTIVATE_PASS2 "duck"
@@ -98,13 +98,10 @@ private:
 		COM_SHUTDOWN,
 		COM_RUN,
 		COM_DELETE,
-		COM_DEFINE_GPIO,
-		COM_SET,
-		COM_CLEAR,
-		COM_DEFINE_MOSFET,
-		COM_MOSSET,
-		COM_MOSREAD,
-		COM_MOSCLEAR,
+		COM_IO_DEFINE,
+		COM_IO_SET,
+		COM_IO_READ,
+		COM_IO_CLEAR,
 		COM_ECHO,
 		COM_EXIT,
 		AMOUNT_COMMANDS,
@@ -182,12 +179,19 @@ private:
 
 	// command functions
 	void ComHelp(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
-	int ComActivateaccount(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, const char *pPhrase1, const char *pPhrase2, const char *pPhrase3, size_t LenPhrases);
+	int ComActivateAccount(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, const char *pPhrase1, const char *pPhrase2, const char *pPhrase3, size_t LenPhrases);
 	void ComRegister(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pUsername, char *pPassword);
 	void ComLogin(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pUsername, char *pPassword);
 	void ComLogout(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
 	void ComShutdown(S_SLOTINFO *psSlotInfo);
 	void ComRun(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pMsgFull);
+	int ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pTarget, size_t LenTarget);
+	void ComIODefine(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pNumber, char *pState, size_t LenParams);
+	void ComIOSet(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, char *pNumber, char *pState, size_t LenParams);
+	void ComIORead(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
+	void ComIOClear(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
+	void ComEcho(char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp);
+	void ComExit(S_SLOTINFO *psSlotInfo);
 
 	// member variables
 	int m_ServerPort;
@@ -207,19 +211,16 @@ private:
 		{
 			{COM_HELP, CSERVER_COMMAND_STRING_HELP, "Lists this help", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
 			{COM_ACTIVATEACCOUNT, "i", "Activates your account and unlocks all commands", CSERVER_COM_ACTIVATE_PASS1 " " CSERVER_COM_ACTIVATE_PASS2 " " CSERVER_COM_ACTIVATE_PASS3, "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN},
-			{COM_REGISTER, "register", "Registers an account, " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters", "<username> <password>", "bob ross", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
-			{COM_LOGIN, "login", "Logs an account in, " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters", "<username> <password>", "bob ross", CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
+			{COM_REGISTER, "register", "Registers an account, " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) "-" STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters", "<username> <password>", "bob ross", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
+			{COM_LOGIN, "login", "Logs an account in, " STRINGIFY_VALUE(CSERVER_MIN_LEN_CREDENTIALS) "-" STRINGIFY_VALUE(CSERVER_MAX_LEN_CREDENTIALS) " characters", "<username> <password>", "bob ross", CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
 			{COM_LOGOUT, "logout", "Logs an account out", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDIN},
 			{COM_SHUTDOWN, "shutdown", "Shuts down the server", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
 			{COM_RUN, "run", "Runs a console command on the machine", "<command>", "reboot", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
 			{COM_DELETE, "delete", "Deletes the program log, your defines, your account or all files", "log/defines/account/all", "log", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_DEFINE_GPIO, "define_gpio", "Defines the name of a GPIO. The name must begin with a letter, and have " STRINGIFY_VALUE(CSERVER_MIN_LEN_DEFINES) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_DEFINES) " characters. Name is case insensitive", "<GPIO number " CSERVER_COM_GPIO_RANGE "> <name>", "0 fan", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_SET, "set_gpio", "Sets the status of a GPIO, all GPIOs are output", "<GPIO number " CSERVER_COM_GPIO_RANGE "/name> <1/0/on/off/high/low>", "fan on", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_CLEAR, "clear_gpio", "Clears the status of all GPIOs", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_DEFINE_MOSFET, "define_mosfet", "Defines the name of a MOSFET. The name must begin with a letter, and have " STRINGIFY_VALUE(CSERVER_MIN_LEN_DEFINES) " - " STRINGIFY_VALUE(CSERVER_MAX_LEN_DEFINES) " characters. Name is case insensitive", "<MOSFET number " CSERVER_COM_MOSFET_RANGE "> <name>", "1 lawnmower", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_MOSSET, "set_mosfet", "Sets the status of a MOSFET", "<MOSFET number " CSERVER_COM_MOSFET_RANGE "/name> <1/0/on/off/high/low>", "lawnmower on", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_MOSREAD, "read_mosfet", "(Not yet implemented!) Reads the status of all MOSFETs", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
-			{COM_MOSCLEAR, "clear_mosfet", "Clears the status of all MOSFETs", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_IO_DEFINE, "define", "Defines the name of an IO (GPIO range = " CSERVER_COM_GPIO_RANGE "; MOSFET range = " CSERVER_COM_MOSFET_RANGE "). The name must have " STRINGIFY_VALUE(CSERVER_MIN_LEN_DEFINES) "-" STRINGIFY_VALUE(CSERVER_MAX_LEN_DEFINES) " characters and is case insensitive", "gpio/mosfet <IO-number> <name>", "gpio 0 fan", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_IO_SET, "set", "Sets the status of an IO (GPIO range = " CSERVER_COM_GPIO_RANGE "; MOSFET range = " CSERVER_COM_MOSFET_RANGE "). All IOs are output", "<IO-number/name> <1/0/on/off/high/low>", "gpio fan on", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_IO_READ, "read", "Reads the status of all IOs", "gpio/mosfet", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
+			{COM_IO_CLEAR, "clear", "Clears the status of all IOs", "gpio/mosfet", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_ACTIVATEDONLY | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_ACTIVATEDONLY},
 			{COM_ECHO, "echo", "The echo which echoes", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
 			{COM_EXIT, "exit", "Closes your connection", "", "", CSERVER_COMFLAG_VISI_LOGGEDIN | CSERVER_COMFLAG_VISI_LOGGEDOUT | CSERVER_COMFLAG_EXEC_LOGGEDIN | CSERVER_COMFLAG_EXEC_LOGGEDOUT},
 	};
