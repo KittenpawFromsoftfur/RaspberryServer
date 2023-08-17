@@ -6,11 +6,7 @@
 
 /* TODO
 	GENERAL
-		Test every single function again (Laststop: ComIOAction Set <name> name will always be 0 if not existing)
 		update readme
-
-	BUGS
-		writekey: when less lines than needed, it will take the last line instead of throwing error or making the necessary amount of lines
 
 	INTERFACE
 		Make it so you can connect with a browser and click on buttons instead of sending commands

@@ -1,7 +1,9 @@
 l# Description
 This program starts a server on your raspberry, that allows you to remote control your GPIO pins and your "Eight MOSFETS 8-Layer Stackable HAT for Raspberry Pi" from https://sequentmicrosystems.com/products/eight-mosfets-8-layer-stackable-card-for-raspberry-pi
+- not sponsored by the way :)
 
-The program features a login system with IP bans and secret phrase that has to be entered for every registered account in order to unlock full functionality.
+The program features a login system for security, and safety measures for individuals trying to circumvent it.
+A secret phrase has to be entered for every registered account in order to unlock full functionality such as setting gpios.
 
 The following is the output of the 'help' function for a locked account.
 ```
@@ -67,9 +69,9 @@ chmod +777 -R /home/<username>/server
 nano /etc/dhcpcd.conf
 ```
 
-Add the following lines, replace the "static routers" IP with the IP of your router.
-You can find out your router's IP via windows CMD "ipconfig /all" and look for the entry "Default Gateway".
-Keep in mind that with the subnet mask 24 (255.255.255.0), the IP of the raspberry has to match the IP of the router up to the mask. E.g. "192.168.178.x".
+Add the following lines, replace the "static routers" IP with the default gateway of your router.
+You can find out your router's default gateway via windows CMD "ipconfig /all" and look for the entry "Default Gateway" or via the linux command "ip route".
+Keep in mind that with the subnet mask 24 (255.255.255.0), the IP of the raspberry has to match the default gateway of the router up to the mask. E.g. "192.168.178.x".
 ```
 interface eth0
 static ip_address=192.168.178.10/24
@@ -132,6 +134,7 @@ Keep in mind that disabling a service will remove the symlink from /etc/systemd/
 ```
 systemctl stop xserver.service
 ```
+This will only stop the service temporarily, rebooting the raspberry will start it again.
 
 # Program call parameters
 ```

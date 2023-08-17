@@ -473,7 +473,6 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 	int commandIndex = 0;
 	char aBufTemp[CSERVER_NET_BUFFERSIZE] = {0};
 	int commandExecutable = false;
-	int commandVisible = false;
 	int respondCommandUnknown = false;
 
 	// look for command
@@ -499,9 +498,6 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 	{
 		// check if command is executable
 		commandExecutable = IsCommandExecutable(psSlotInfo, m_asCommands[commandIndex].flags);
-
-		// check if command is visible
-		commandVisible = IsCommandVisible(psSlotInfo, m_asCommands[commandIndex].flags);
 	}
 
 	if (commandExecutable)
@@ -1451,15 +1447,17 @@ int CServer::ComLogout(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 	return OK;
 }
 
-int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, E_IOACTIONS IOAction, const char *pIOType, const char *pIONumber, const char *pIOParam, size_t LenIOParams)
+int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, E_IOACTIONS IOAction, const char *pIOType, const char *pIOID, const char *pIOParam, size_t LenIOParams)
 {
 	int retval = 0;
-	int ioNumber = atoi(pIONumber);
+	int ioNumber = atoi(pIOID);
 	int ioState = 0;
 	CHardware::E_HWTYPE ioType = CHardware::INVALID;
 	const char *pIORange = 0;
 	E_FILETYPES fileType = FILETYPE_INVALID;
 	char aRead[CSERVER_MAX_LEN_LINES] = {0};
+	char aIONameAddition[16] = {0};
+	bool ioIsName = false;
 
 	// check IO type
 	// GPIO
@@ -1489,10 +1487,10 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 	case IOACT_DEFINE:
 		// check IO number
 		// IO number must be a number
-		if (CCore::IsLetter(pIONumber[0]))
+		if (CCore::IsLetter(pIOID[0]))
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Error, IO number must be a number", psSlotInfo->slotIndex);
-			snprintf(pBufTemp, LenBufTemp, "Error, IO number must be a number");
+			m_pMainlogic->m_Log.Log("Slot[%d] Error, %s number must be a number", psSlotInfo->slotIndex, pIOType);
+			snprintf(pBufTemp, LenBufTemp, "Error, %s number must be a number", pIOType);
 			strncat(pResp, pBufTemp, LenResp);
 			return ERROR;
 		}
@@ -1500,9 +1498,13 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 
 	case IOACT_SET:
 		// check if stated IO is name or number
+		ioNumber = -1;
+
 		// IO is name
-		if (CCore::IsLetter(pIOParam[0]))
+		if (CCore::IsLetter(pIOID[0]))
 		{
+			ioIsName = true;
+
 			for (int i = 0; i <= 31; ++i)
 			{
 				// skip non-IO pins
@@ -1518,7 +1520,7 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 				}
 
 				// compare name
-				if (CCore::StringCompareNocase(aRead, pIOParam, ARRAYSIZE(aRead)) == 0)
+				if (CCore::StringCompareNocase(aRead, pIOID, ARRAYSIZE(aRead)) == 0)
 				{
 					ioNumber = i;
 					break;
@@ -1527,7 +1529,7 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 		}
 		else // IO is number
 		{
-			ioNumber = atoi(pIONumber);
+			ioNumber = atoi(pIOID);
 		}
 		break;
 	}
@@ -1535,10 +1537,20 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 	// IO number must be in valid range
 	if (!m_Hardware.IsIOValid(CHardware::GPIO, ioNumber))
 	{
-		m_pMainlogic->m_Log.Log("Slot[%d] Error, IO number must be within range of %s", pIORange, psSlotInfo->slotIndex);
-		snprintf(pBufTemp, LenBufTemp, "Error, IO number must be within range of %s", pIORange);
-		strncat(pResp, pBufTemp, LenResp);
-		return ERROR;
+		if (ioIsName) // io name was given but not found
+		{
+			m_pMainlogic->m_Log.Log("Slot[%d] Error, %s name '%s' was not found in defines", psSlotInfo->slotIndex, pIOType, pIOID);
+			snprintf(pBufTemp, LenBufTemp, "Error, %s name '%s' was not found in defines", pIOType, pIOID);
+			strncat(pResp, pBufTemp, LenResp);
+			return ERROR;
+		}
+		else // io number was given but outside range
+		{
+			m_pMainlogic->m_Log.Log("Slot[%d] Error, %s number must be within range of %s", psSlotInfo->slotIndex, pIOType, pIORange);
+			snprintf(pBufTemp, LenBufTemp, "Error, %s number must be within range of %s", pIOType, pIORange);
+			strncat(pResp, pBufTemp, LenResp);
+			return ERROR;
+		}
 	}
 
 	switch (IOAction)
@@ -1548,26 +1560,8 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 		// IO name must begin with a letter
 		if (!CCore::IsLetter(pIOParam[0]))
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Error, IO name must begin with a letter", psSlotInfo->slotIndex);
-			snprintf(pBufTemp, LenBufTemp, "Error, IO name must begin with a letter");
-			strncat(pResp, pBufTemp, LenResp);
-			return ERROR;
-		}
-
-		// IO name must be simple ascii
-		if (!CCore::CheckStringAscii(pIOParam, LenIOParams))
-		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Error, IO name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, psSlotInfo->slotIndex);
-			snprintf(pBufTemp, LenBufTemp, "Error, IO name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE);
-			strncat(pResp, pBufTemp, LenResp);
-			return ERROR;
-		}
-
-		// IO name length must be within limits
-		if (strnlen(pIOParam, LenIOParams) < CSERVER_MIN_LEN_DEFINES || strnlen(pIOParam, LenIOParams) > CSERVER_MAX_LEN_DEFINES)
-		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Error, name must have %d-%d characters", psSlotInfo->slotIndex, CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
-			snprintf(pBufTemp, LenBufTemp, "Error, name must have %d-%d characters", CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
+			m_pMainlogic->m_Log.Log("Slot[%d] Error, %s name must begin with a letter", psSlotInfo->slotIndex, pIOType);
+			snprintf(pBufTemp, LenBufTemp, "Error, %s name must begin with a letter", pIOType);
 			strncat(pResp, pBufTemp, LenResp);
 			return ERROR;
 		}
@@ -1575,8 +1569,17 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 		// IO name format must be ascii
 		if (!CCore::CheckStringAscii(pIOParam, LenIOParams))
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Error, name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, psSlotInfo->slotIndex);
-			snprintf(pBufTemp, LenBufTemp, "Error, name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE);
+			m_pMainlogic->m_Log.Log("Slot[%d] Error, %s name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, psSlotInfo->slotIndex, pIOType);
+			snprintf(pBufTemp, LenBufTemp, "Error, %s name must only contain the characters " CSERVER_CHARRANGE_ASCII_READABLE, pIOType);
+			strncat(pResp, pBufTemp, LenResp);
+			return ERROR;
+		}
+
+		// IO name length must be within limits
+		if (strnlen(pIOParam, LenIOParams) < CSERVER_MIN_LEN_DEFINES || strnlen(pIOParam, LenIOParams) > CSERVER_MAX_LEN_DEFINES)
+		{
+			m_pMainlogic->m_Log.Log("Slot[%d] Error, %s name must have %d-%d characters", psSlotInfo->slotIndex, pIOType, CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
+			snprintf(pBufTemp, LenBufTemp, "Error, %s name must have %d-%d characters", pIOType, CSERVER_MIN_LEN_DEFINES, CSERVER_MAX_LEN_DEFINES);
 			strncat(pResp, pBufTemp, LenResp);
 			return ERROR;
 		}
@@ -1584,14 +1587,14 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 		// all checks ok
 		// write define to file
 		retval = WriteKey(psSlotInfo, fileType, (E_ACCOUNTKEYS)ioNumber, pIOParam, pResp, LenResp);
-		if (retval != ERROR)
+		if (retval != OK)
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Failed to define IO %d as %s", psSlotInfo->slotIndex, ioNumber, pIOParam);
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to define %s %d as %s", psSlotInfo->slotIndex, pIOType, ioNumber, pIOParam);
 			return ERROR;
 		}
 
-		m_pMainlogic->m_Log.Log("Slot[%d] Defined IO %d as '%s'", psSlotInfo->slotIndex, ioNumber, pIOParam);
-		snprintf(pBufTemp, LenBufTemp, "Defined IO %d as '%s'", ioNumber, pIOParam);
+		m_pMainlogic->m_Log.Log("Slot[%d] Defined %s %d as '%s'", psSlotInfo->slotIndex, pIOType, ioNumber, pIOParam);
+		snprintf(pBufTemp, LenBufTemp, "Defined %s %d as '%s'", pIOType, ioNumber, pIOParam);
 		strncat(pResp, pBufTemp, LenResp);
 		break;
 
@@ -1619,8 +1622,8 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 		// check IO state format
 		if (ioState < 0 || ioState > 1)
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Error unknown IO state '%s'", psSlotInfo->slotIndex, pIOParam);
-			snprintf(pBufTemp, LenBufTemp, "Error unknown IO state '%s'", pIOParam);
+			m_pMainlogic->m_Log.Log("Slot[%d] Error unknown %s state '%s'", psSlotInfo->slotIndex, pIOType, pIOParam);
+			snprintf(pBufTemp, LenBufTemp, "Error unknown %s state '%s'", pIOType, pIOParam);
 			strncat(pResp, pBufTemp, LenResp);
 			return ERROR;
 		}
@@ -1630,14 +1633,15 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 		retval = m_Hardware.SetIO(ioType, ioNumber, (CHardware::E_HWSTATE)ioState);
 		if (retval != OK)
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Failed to write IO, returned %d", psSlotInfo->slotIndex, retval);
-			snprintf(pBufTemp, LenBufTemp, "Failed to write IO, returned %d", retval);
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to write %s, returned %d", psSlotInfo->slotIndex, pIOType, retval);
+			snprintf(pBufTemp, LenBufTemp, "Failed to write %s, returned %d", pIOType, retval);
 			strncat(pResp, pBufTemp, LenResp);
 			return ERROR;
 		}
 
-		m_pMainlogic->m_Log.Log("Slot[%d] IO %s (%d) --> %s", psSlotInfo->slotIndex, pIONumber, ioNumber, pIOParam);
-		snprintf(pBufTemp, LenBufTemp, "IO %s (%d) --> %s", pIONumber, ioNumber, pIOParam);
+		snprintf(aIONameAddition, ARRAYSIZE(aIONameAddition), " (%d)", ioNumber);
+		m_pMainlogic->m_Log.Log("Slot[%d] %s %s%s --> %s", psSlotInfo->slotIndex, pIOType, pIOID, ioIsName ? aIONameAddition : "", pIOParam);
+		snprintf(pBufTemp, LenBufTemp, "%s %s%s --> %s", pIOType, pIOID, ioIsName ? aIONameAddition : "", pIOParam);
 		strncat(pResp, pBufTemp, LenResp);
 		break;
 
@@ -1645,14 +1649,14 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 		retval = m_Hardware.ClearIO(ioType);
 		if (retval != OK)
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Failed to clear IOs, returned %d", psSlotInfo->slotIndex, retval);
-			snprintf(pBufTemp, LenBufTemp, "Failed to clear IOs, returned %d", retval);
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to clear %ss, returned %d", psSlotInfo->slotIndex, pIOType, retval);
+			snprintf(pBufTemp, LenBufTemp, "Failed to clear %ss, returned %d", pIOType, retval);
 			strncat(pResp, pBufTemp, LenResp);
 			return ERROR;
 		}
 
-		m_pMainlogic->m_Log.Log("Slot[%d] Cleared IOs", psSlotInfo->slotIndex);
-		snprintf(pBufTemp, LenBufTemp, "Cleared IOs");
+		m_pMainlogic->m_Log.Log("Slot[%d] Cleared %ss", psSlotInfo->slotIndex, pIOType);
+		snprintf(pBufTemp, LenBufTemp, "Cleared %ss", pIOType);
 		strncat(pResp, pBufTemp, LenResp);
 		break;
 	}
@@ -1673,6 +1677,7 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 	bool preventDeletingFilesDefine = false;
 	bool preventLogOut = false;
 	bool anyActionFailed = false;
+	char aAccountName[ARRAYSIZE(S_SLOTINFO::aUsername)] = {0};
 
 	/* NOTE
 		When an error occurs, no return is performed so the max amount of files can be deleted.
@@ -1708,6 +1713,9 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 		strncat(pResp, pBufTemp, LenResp);
 		return ERROR;
 	}
+
+	// copy account name for logging after deleting account info
+	strncpy(aAccountName, psSlotInfo->aUsername, ARRAYSIZE(aAccountName));
 
 	// perform actions
 	// clear defines
@@ -1846,8 +1854,8 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 		}
 		else
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Deleted account and logged out", psSlotInfo->slotIndex);
-			snprintf(pBufTemp, LenBufTemp, "Deleted account and logged out");
+			m_pMainlogic->m_Log.Log("Slot[%d] Deleted account '%s' and logged out", psSlotInfo->slotIndex, aAccountName);
+			snprintf(pBufTemp, LenBufTemp, "Deleted account '%s' and logged out", aAccountName);
 			strncat(pResp, pBufTemp, LenResp);
 		}
 	}
