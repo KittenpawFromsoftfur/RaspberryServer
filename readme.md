@@ -1,9 +1,10 @@
 # Description
 This program starts a server on your raspberry, that allows you to remote control your GPIO pins and your "Eight MOSFETS 8-Layer Stackable HAT for Raspberry Pi" from https://sequentmicrosystems.com/products/eight-mosfets-8-layer-stackable-card-for-raspberry-pi
-- not sponsored by the way :)
+
+This is not sponsored by the way :)
 
 The program features a login system for security, and safety measures for individuals trying to circumvent it.
-A secret phrase has to be entered for every registered account in order to unlock full functionality such as setting gpios.
+A secret phrase has to be entered for every registered account in order to unlock full functionality such as setting GPIOs.
 
 The following is the output of the 'help' function for a locked account.
 ```
@@ -30,7 +31,7 @@ The following is the output of the 'help' function for an unlocked account.
 > register... Registers an account, 1-16 characters. Usage: 'register <username> <password>'. Example: 'register bob ross'
 > logout... Logs an account out. Usage: 'logout'.
 > define... Defines the name of an IO (GPIO range = 0-7, 10-16, 21-31; MOSFET range = 1-8). The name must have 1-16 characters and is case insensitive. Usage: 'define gpio/mosfet <IO-number> <name>'. Example: 'define gpio 0 fan'
-> set... Sets the status of an IO (GPIO range = 0-7, 10-16, 21-31; MOSFET range = 1-8). All IOs are output. Usage: 'set <IO-number/name> <1/0/on/off/high/low>'. Example: 'set gpio fan on'
+> set... Sets the status of an IO (GPIO range = 0-7, 10-16, 21-31; MOSFET range = 1-8). All IOs are output. Multi setting IOs via name is not supported. Usage: 'set <IO-number/name> <1/0/on/off/high/low>'. Example: 'set gpio fan on'
 > clear... Clears the status of all IOs. Usage: 'clear gpio/mosfet'.
 > delete... Deletes the program log, your defines, your account or all files. Usage: 'delete log/defines/account/all'. Example: 'delete log'
 > shutdown... Shuts down the server. Usage: 'shutdown'.
