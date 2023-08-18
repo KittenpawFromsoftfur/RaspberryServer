@@ -1,8 +1,26 @@
+/**
+ * @file mainlogic.cpp
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Main logic of the program, starts all threads, handles keyboard control and handles application exit
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ */
 #include <unistd.h>
 #include <string.h>
 
 #include "mainlogic.h"
 
+/**
+ * @brief Construct a new CMainlogic::CMainlogic object
+ *
+ * @param pLogFolder        Log folder name
+ * @param pLogName          Log file name
+ * @param ServerPort        Port that the server is started on
+ * @param UppercaseResponse Whether the server should respond with uppercase letters to the clients
+ *
+ */
 CMainlogic::CMainlogic(const char *pLogFolder, const char *pLogName, int ServerPort, bool UppercaseResponse) : m_Log(pLogFolder, pLogName)
 {
     m_DoExitApplication = false;
@@ -10,6 +28,9 @@ CMainlogic::CMainlogic(const char *pLogFolder, const char *pLogName, int ServerP
     m_pServer = new CServer(this, ServerPort, UppercaseResponse);
 }
 
+/**
+ * @brief Destroy the CMainlogic::CMainlogic object, detach all threads and deallocate members
+ */
 CMainlogic::~CMainlogic()
 {
     for (int i = 0; i < ARRAYSIZE(m_aThread); ++i)
@@ -18,6 +39,12 @@ CMainlogic::~CMainlogic()
     delete m_pServer;
 }
 
+/**
+ * @brief Entry point of the main logic, starts all threads, handles keyboard control and handles application exit
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CMainlogic::EntryPoint()
 {
     int retval = 0;
@@ -66,6 +93,15 @@ int CMainlogic::EntryPoint()
     return OK;
 }
 
+/**
+ * @brief Sets a thread status of the main logic
+ *
+ * @param ThreadIndex   Index of the thread to set
+ * @param Status        Status to set
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CMainlogic::SetThreadStatus(E_THREADS ThreadIndex, E_THREADSTATUS Status)
 {
     if ((ThreadIndex < 0 || ThreadIndex >= ARRAYSIZE(m_aThreadStatus)))
@@ -79,11 +115,19 @@ int CMainlogic::SetThreadStatus(E_THREADS ThreadIndex, E_THREADSTATUS Status)
     return OK;
 }
 
+/**
+ * @brief Requests the application to exit gracefully
+ */
 void CMainlogic::RequestApplicationExit()
 {
     m_DoExitApplication = true;
 }
 
+/**
+ * @brief Keyboard control loop for easy maintenance
+ *
+ * @return OK
+ */
 int CMainlogic::Keyboardcontrol()
 {
     char ch = 0;
@@ -108,6 +152,12 @@ int CMainlogic::Keyboardcontrol()
     return OK;
 }
 
+/**
+ * @brief Exits the application gracefully
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CMainlogic::ExitApplication()
 {
     int retval = 0;

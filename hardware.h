@@ -1,3 +1,13 @@
+/**
+ * @file hardware.h
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Control hardware functions such as setting GPIOs
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ *
+ */
 #pragma once
 
 #define CHARDWARE_MAX_LEN_SYSTEMCOMMAND 256

@@ -1,3 +1,13 @@
+/**
+ * @file log.h
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Simple logging such as printing on the console and simultaneously writing a log to the file system
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ *
+ */
 #pragma once
 
 // value defines

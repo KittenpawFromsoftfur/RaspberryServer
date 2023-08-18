@@ -1,4 +1,12 @@
-#include <stdio.h>
+/**
+ * @file core.cpp
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Core functions for any program
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ */
 #include <ctype.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -9,12 +17,22 @@
 
 #include "core.h"
 
+/**
+ * @brief Construct a new CCore::CCore object
+ */
 CCore::CCore()
 {
 	m_sTimeStart = {0};
 }
 
-// makes a dir if not yet existing
+/**
+ * @brief Makes a directory in the file system if it does not yet exist
+ *
+ * @param pPath Path to folder to generate
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CCore::Mkdir(const char *pPath)
 {
 	struct stat sStat = {0};
@@ -33,6 +51,14 @@ int CCore::Mkdir(const char *pPath)
 	return OK;
 }
 
+/**
+ * @brief Removes a file on the file system
+ *
+ * @param pFilename File to remove
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CCore::RemoveFile(const char *pFilename)
 {
 	int retval = 0;
@@ -44,7 +70,14 @@ int CCore::RemoveFile(const char *pFilename)
 	return OK;
 }
 
-// removes all files in a directory
+/**
+ * @brief Removes all files in a directory on the file system
+ *
+ * @param pDirname Path to directory
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CCore::RemoveFilesDirectory(const char *pDirname)
 {
 	DIR *pDir = 0;
@@ -88,6 +121,14 @@ int CCore::RemoveFilesDirectory(const char *pDirname)
 }
 
 // true=exists, false=not-exist, ERROR=error
+/**
+ * @brief Counts the amount of files in a directory on the file system
+ *
+ * @param pDirname Name of the directory
+ *
+ * @return Amount of files
+ * @return ERROR
+ */
 int CCore::CountFilesDirectory(const char *pDirname)
 {
 	DIR *pDir = 0;
@@ -119,8 +160,18 @@ int CCore::CountFilesDirectory(const char *pDirname)
 	return amount;
 }
 
-// true=exists, false=does not exist, ERROR=error
-bool CCore::CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename)
+/**
+ * @brief Checks whether a file exists in a directory
+ *
+ * @param pDirname 		Name of the directory
+ * @param pFilename		Name of the file
+ * @param LenFilename	Length of the file name
+ *
+ * @return true		if the file exists
+ * @return false	if the file does not exist
+ * @return ERROR 	if the directory could not be opened for reading
+ */
+int CCore::CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename)
 {
 	DIR *pDir = 0;
 	struct dirent *psDirent = 0;
@@ -149,6 +200,17 @@ bool CCore::CheckFileExists(const char *pDirname, const char *pFilename, size_t 
 	return false;
 }
 
+/**
+ * @brief Compares two strings case insensitively
+ *
+ * @param pSource	Source string
+ * @param pDest 	Destination string
+ * @param Len 		Max length to compare for both strings
+ *
+ * @return 0	if the strings are the same
+ * @return <0	if the source string has lower ascii value than the dest string
+ * @return >0	if the source string has higher ascii value than the dest string
+ */
 int CCore::StringCompareNocase(const char *pSource, const char *pDest, size_t Len)
 {
 	signed char diff = 0;
@@ -167,6 +229,14 @@ int CCore::StringCompareNocase(const char *pSource, const char *pDest, size_t Le
 	return 0;
 }
 
+/**
+ * @brief Copies a string and ignores given characters
+ *
+ * @param pDest 	Destination string
+ * @param pSource 	Source string
+ * @param Len 		Max length to copy to destination string
+ * @param pIgnore 	Characters to not copy e.g. "cw#*3" will ignore 'c', 'w', '#', '*' and '3'
+ */
 void CCore::StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const char *pIgnore)
 {
 	int destIndex = 0;
@@ -201,6 +271,13 @@ void CCore::StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const
 	}
 }
 
+/**
+ * @brief Removes the given characters from a string
+ *
+ * @param pSource	Source string
+ * @param Len 		Length of source string
+ * @param pRem 		Characters to remove e.g. "xyz" will remove all occurrences of 'x', 'y' and 'z' from the source string
+ */
 void CCore::StringRemove(char *pSource, size_t Len, const char *pRem)
 {
 	int remLen = strnlen(pRem, Len);
@@ -244,6 +321,12 @@ void CCore::StringRemove(char *pSource, size_t Len, const char *pRem)
 	pSource[i] = '\0';
 }
 
+/**
+ * @brief Replace all lower ascii characters with upper ascii characters
+ *
+ * @param pSource 	Source string
+ * @param Len 		Length of source string
+ */
 void CCore::StringToUpper(char *pSource, size_t Len)
 {
 	for (int i = 0; i < Len; ++i)
@@ -255,6 +338,12 @@ void CCore::StringToUpper(char *pSource, size_t Len)
 	}
 }
 
+/**
+ * @brief Replace all upper ascii characters with lower ascii characters
+ *
+ * @param pSource 	Source string
+ * @param Len 		Length of source string
+ */
 void CCore::StringToLower(char *pSource, size_t Len)
 {
 	for (int i = 0; i < Len; ++i)
@@ -266,6 +355,15 @@ void CCore::StringToLower(char *pSource, size_t Len)
 	}
 }
 
+/**
+ * @brief Checks whether a string contains ascii values (Aa-Zz, 0-9)
+ *
+ * @param pString 	String to check
+ * @param Len 		Length of string
+ *
+ * @return true
+ * @return false
+ */
 bool CCore::CheckStringAscii(const char *pString, size_t Len)
 {
 	char ch = 0;
@@ -285,6 +383,14 @@ bool CCore::CheckStringAscii(const char *pString, size_t Len)
 	return true;
 }
 
+/**
+ * @brief Checks whether a character is a letter (Aa-Zz)
+ *
+ * @param Char Character to check
+ *
+ * @return true
+ * @return false
+ */
 bool CCore::IsLetter(char Char)
 {
 	if (Char < 65 || (Char > 90 && Char < 97) || Char > 122)
@@ -293,6 +399,14 @@ bool CCore::IsLetter(char Char)
 	return true;
 }
 
+/**
+ * @brief Checks whether a character is a number (0-9)
+ *
+ * @param Char Character to check
+ *
+ * @return true
+ * @return false
+ */
 bool CCore::IsNumber(char Char)
 {
 	if (Char < 48 || Char > 57)
@@ -301,6 +415,14 @@ bool CCore::IsNumber(char Char)
 	return true;
 }
 
+/**
+ * @brief Detaches a std::thread safely by checking whether it is joinable before detaching
+ *
+ * @param pThread Pointer to thread
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CCore::DetachThreadSafely(std::thread *pThread)
 {
 	if (!pThread)
@@ -312,6 +434,13 @@ int CCore::DetachThreadSafely(std::thread *pThread)
 	return OK;
 }
 
+/**
+ * @brief Starts the measurement of time, use MeasureStop() to get the passed time in seconds + nano seconds
+ *
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CCore::MeasureStart()
 {
 	if (clock_gettime(CLOCK_REALTIME, &m_sTimeStart) != 0)
@@ -320,6 +449,13 @@ int CCore::MeasureStart()
 	return OK;
 }
 
+/**
+ * @brief Stops the measurement of time, use MeasureStart() beforehand, to start the measurement of time
+ *
+ * @param Print Whether the passed time since MeasureStart() has been called should be printed.
+ *
+ * @return Passed time in seconds + nano seconds since MeasureStart() was called.
+ */
 double CCore::MeasureStop(bool Print)
 {
 	struct timespec sTimeStop = {0};

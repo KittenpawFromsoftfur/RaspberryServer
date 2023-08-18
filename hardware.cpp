@@ -1,3 +1,13 @@
+/**
+ * @file hardware.cpp
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Control hardware functions such as setting GPIOs
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ *
+ */
 #include <wiringPi.h>
 #include <stdlib.h>
 
@@ -8,6 +18,9 @@
 	With "gpio readall" you can see the wiringPi numbering scheme
 */
 
+/**
+ * @brief Construct a new CHardware::CHardware object
+ */
 CHardware::CHardware()
 {
 	wiringPiSetup();
@@ -23,6 +36,15 @@ CHardware::CHardware()
 	}
 }
 
+/**
+ * @brief Checks whether an IO number is valid for setting on or off
+ *
+ * @param Type 		IO Type to check
+ * @param IONumber 	IO Number to check
+ *
+ * @return true
+ * @return false
+ */
 bool CHardware::IsIOValid(E_HWTYPE Type, int IONumber)
 {
 	switch (Type)
@@ -41,6 +63,16 @@ bool CHardware::IsIOValid(E_HWTYPE Type, int IONumber)
 	return true;
 }
 
+/**
+ * @brief Sets an IO number on or off
+ *
+ * @param Type 		IO Type to set
+ * @param IONumber 	IO Number to set
+ * @param State 	State to set
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CHardware::SetIO(E_HWTYPE Type, int IONumber, E_HWSTATE State)
 {
 	int retval = 0;
@@ -64,6 +96,14 @@ int CHardware::SetIO(E_HWTYPE Type, int IONumber, E_HWSTATE State)
 	return OK;
 }
 
+/**
+ * @brief Clears all IOs of a type
+ *
+ * @param Type Type to clear
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CHardware::ClearIO(E_HWTYPE Type)
 {
 	int retval = 0;

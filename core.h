@@ -1,3 +1,12 @@
+/**
+ * @file core.h
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Core functions for any program
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ */
 #pragma once
 
 #include <stdio.h>
@@ -28,7 +37,7 @@ public:
     static int RemoveFile(const char *pFilename);
     static int RemoveFilesDirectory(const char *pDirname);
     static int CountFilesDirectory(const char *pDirname);
-    static bool CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename);
+    static int CheckFileExists(const char *pDirname, const char *pFilename, size_t LenFilename);
     static int StringCompareNocase(const char *pSource, const char *pDest, size_t Len);
     static void StringCopyIgnore(char *pDest, const char *pSource, size_t Len, const char *pIgnore);
     static void StringRemove(char *pSource, size_t Len, const char *pRem);

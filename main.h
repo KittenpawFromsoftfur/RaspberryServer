@@ -1,3 +1,13 @@
+/**
+ * @file main.h
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Entry point of the program, handles program call parameters and lists usage help
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ *
+ */
 #pragma once
 
 #include "core.h"

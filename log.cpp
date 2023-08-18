@@ -1,3 +1,13 @@
+/**
+ * @file log.cpp
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Simple logging such as printing on the console and simultaneously writing a log to the file system
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ *
+ */
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,7 +18,13 @@
 #include "core.h"
 #include "log.h"
 
-// if the log has to be placed in a non-existing folder, that folder has to be created first, or the logging will fail
+/**
+ * @brief	Construct a new CLog::CLog object
+ *			If the log folder does not exist, logging will fail, so make sure to create it beforehand
+ *
+ * @param pFolder	Log folder name to place the log in or append to
+ * @param pFile 	Log file name to be created or appended to
+ */
 CLog::CLog(const char *pFolder, const char *pFile)
 {
 	int retval = 0;
@@ -27,6 +43,12 @@ CLog::CLog(const char *pFolder, const char *pFile)
 	}
 }
 
+/**
+ * @brief Logs a message in the printf() format
+ *
+ * @param pMessage	Message to print
+ * @param ... 		Format parameters
+ */
 void CLog::Log(const char *pMessage, ...)
 {
 	char buffer[CLOG_MSG_MAXLEN] = {0};
@@ -39,11 +61,24 @@ void CLog::Log(const char *pMessage, ...)
 	va_end(argptr);
 }
 
+/**
+ * @brief Returns the log file path consisting of folder and log name
+ *
+ * @return Log file path
+ */
 const char *CLog::GetLogFilename()
 {
 	return m_aLogFullPath;
 }
 
+/**
+ * @brief Writes a message to a file on the file system
+ *
+ * @param pMessage Message to write
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CLog::WriteToFile(const char *pMessage)
 {
 	FILE *pFile = 0;

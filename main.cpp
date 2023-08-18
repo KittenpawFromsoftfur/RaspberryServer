@@ -1,3 +1,13 @@
+/**
+ * @file main.cpp
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Entry point of the program, handles program call parameters and lists usage help
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ *
+ */
 #include <stdlib.h>
 #include <string.h>
 
@@ -5,20 +15,34 @@
 #include "mainlogic.h"
 
 /* TODO
+	Now
+		Documentation please!
+		Laststop: and finish server.cpp
+		-presp
+		-lenresp
+		-pbuftemp
+		-lbuftemp
+
 	GENERAL
 		update readme
 
 	INTERFACE
 		Make it so you can connect with a browser and click on buttons instead of sending commands
 
-	END
-		Documentation please!
-
 	FAR FUTURE
 		IO set multiple
 		IO read multiple (https://stackoverflow.com/questions/43116/how-can-i-run-an-external-program-from-c-and-parse-its-output)
 */
 
+/**
+ * @brief Entry point of the program, handles program call parameters and lists usage help
+ *
+ * @param argc	Argument count
+ * @param argv	Argument value array
+ *
+ * @return CMainlogic::EntryPoint() return value
+ * @return ERROR
+ */
 int main(int argc, char *argv[])
 {
 	char *pParam = 0;

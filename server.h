@@ -1,3 +1,12 @@
+/**
+ * @file server.h
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Server module responsible for client connections, login system and executing client commands
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ */
 #pragma once
 
 #include <arpa/inet.h>

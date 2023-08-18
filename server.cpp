@@ -1,3 +1,12 @@
+/**
+ * @file server.cpp
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Server module responsible for client connections, login system and executing client commands
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ */
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -17,6 +26,13 @@
 #include "mainlogic.h"
 #include "core.h"
 
+/**
+ * @brief Construct a new CServer::CServer object
+ *
+ * @param pMainlogic 		Pointer to main logic
+ * @param ServerPort 		Port of the server
+ * @param UppercaseResponse Whether the server should respond with uppercase letters to the clients
+ */
 CServer::CServer(CMainlogic *pMainlogic, int ServerPort, bool UppercaseResponse)
 {
 	m_pMainlogic = pMainlogic;
@@ -30,6 +46,9 @@ CServer::CServer(CMainlogic *pMainlogic, int ServerPort, bool UppercaseResponse)
 	memset(&m_asSlotInfo, 0, sizeof(m_asSlotInfo));
 }
 
+/**
+ * @brief Destroy the CServer::CServer object and detach all server and client connection threads
+ */
 CServer::~CServer()
 {
 	CCore::DetachThreadSafely(&m_ThrUpdate);
@@ -38,6 +57,12 @@ CServer::~CServer()
 		CCore::DetachThreadSafely(&m_asSlotInfo[i].thrClientConnection);
 }
 
+/**
+ * @brief Runs the server and starts listening to incoming connections, spawning a new client thread each time
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::Run()
 {
 	int retval = 0;
@@ -246,6 +271,12 @@ int CServer::Run()
 	return OK;
 }
 
+/**
+ * @brief What happens when the application exits, reset the hardware, detach threads and close client connections
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::OnExitApplication()
 {
 	int retval = 0;
@@ -279,6 +310,13 @@ int CServer::OnExitApplication()
 	return OK;
 }
 
+/**
+ * @brief Spawns a client connection
+ *
+ * @param ClientIP 		IP address of the client
+ * @param FDConnection 	File descriptor of the connection
+ * @param SlotIndex 	Slot index of the connection
+ */
 void CServer::SpawnClientConnection(unsigned long ClientIP, int FDConnection, int SlotIndex)
 {
 	S_SLOTINFO *psSlotInfo = &m_asSlotInfo[SlotIndex];
@@ -293,6 +331,14 @@ void CServer::SpawnClientConnection(unsigned long ClientIP, int FDConnection, in
 	psSlotInfo->thrClientConnection = std::thread(&CServer::ClientConnection, this, psSlotInfo);
 }
 
+/**
+ * @brief Client connection, makes IP ban and socket timeout checks and forwards client messages to be parsed
+ *
+ * @param psSlotInfo Slot info
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::ClientConnection(S_SLOTINFO *psSlotInfo)
 {
 	int retval = 0;
@@ -390,6 +436,11 @@ int CServer::ClientConnection(S_SLOTINFO *psSlotInfo)
 	return OK;
 }
 
+/**
+ * @brief Periodically updates the lists of IP bans and suspicious IPs
+ *
+ * @return OK
+ */
 int CServer::Update()
 {
 	time_t currentTime = 0;
@@ -433,8 +484,20 @@ int CServer::Update()
 
 		usleep(CSERVER_DELAY_UPDATELOOP);
 	}
+
+	return OK;
 }
 
+/**
+ * @brief Parses a client message, splits it into tokens and forwards them to be evaluated
+ *
+ * @param psSlotInfo 	Slot info
+ * @param pMsg 			Message to be evaluated
+ * @param pResp 		Pointer to the response buffer
+ * @param LenResp 		Length of the response buffer
+ *
+ * @return OK
+ */
 int CServer::ParseMessage(S_SLOTINFO *psSlotInfo, const char *pMsg, char *pResp, size_t LenResp)
 {
 	char *pToken = 0;
@@ -466,6 +529,15 @@ int CServer::ParseMessage(S_SLOTINFO *psSlotInfo, const char *pMsg, char *pResp,
 	return OK;
 }
 
+/**
+ * @brief Evaluates client message tokens and executes the corresponding commands
+ *
+ * @param psSlotInfo	Slot info
+ * @param aaToken		Array of tokens to be evaluated
+ * @param pResp			-presp
+ * @param LenResp		-lenresp
+ * @param pMsgFull		Full message which has not been tokenized
+ */
 void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TOKENS][CSERVER_MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull)
 {
 	int retval = 0;
@@ -581,6 +653,15 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
 		CCore::StringToUpper(pResp, LenResp);
 }
 
+/**
+ * @brief Checks whether a command is executable
+ *
+ * @param psSlotInfo	Slot info
+ * @param Flags 		Flags to evaluate
+ *
+ * @return true
+ * @return false
+ */
 bool CServer::IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags)
 {
 	int isExecutable = false;
@@ -607,6 +688,15 @@ bool CServer::IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags)
 	return isExecutable;
 }
 
+/**
+ * @brief Checks whether a command is visible for the client
+ *
+ * @param psSlotInfo 	Slot info
+ * @param Flags 		Flags to evaluate
+ *
+ * @return true
+ * @return false
+ */
 bool CServer::IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags)
 {
 	int isVisible = false;
@@ -633,6 +723,12 @@ bool CServer::IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags)
 	return isVisible;
 }
 
+/**
+ * @brief Resets all hardware
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::ResetHardware()
 {
 	int retval = 0;
@@ -650,6 +746,15 @@ int CServer::ResetHardware()
 	return retval;
 }
 
+/**
+ * @brief Generates a file path or file name depehding on the file type
+ *
+ * @param FileType 		File type
+ * @param pUsername 	User name of the client
+ * @param FilenameOnly 	Whether only the file name should be returned
+ * @param pFullpath 	Pointer to the buffer for the full path
+ * @param LenFullpath 	Length of buffer for the full path
+ */
 void CServer::GetFilepath(E_FILETYPES FileType, const char *pUsername, bool FilenameOnly, char *pFullpath, size_t LenFullpath)
 {
 	// prefix filename with "_" so filename exploits do not work like con/aux/... in windows
@@ -685,6 +790,20 @@ void CServer::GetFilepath(E_FILETYPES FileType, const char *pUsername, bool File
 	}
 }
 
+/**
+ * @brief Performs an account action
+ *
+ * @param AccountAction 	Account action to perform
+ * @param psSlotInfo 		Slot info
+ * @param pUsername 		User name of the client
+ * @param pPassword 		Password of the client
+ * @param pWrongCredentials Pointer to buffer for determining whether wrong credentials have been entered by the client
+ * @param pResp 			-presp
+ * @param LenResp 			-lenresp
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInfo, const char *pUsername, const char *pPassword, bool *pWrongCredentials, char *pResp, size_t LenResp)
 {
 	FILE *pFile = 0;
@@ -861,6 +980,17 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
 	return OK;
 }
 
+/**
+ * @brief Creates a defines file for GPIO and MOSFET defines
+ *
+ * @param FileType 	File type
+ * @param pUsername	User name of the client
+ * @param pResp 	-presp
+ * @param LenResp 	-lenresp
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char *pResp, size_t LenResp)
 {
 	FILE *pFile = 0;
@@ -898,6 +1028,19 @@ int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char
 	return OK;
 }
 
+/**
+ * @brief Writes a key to a file
+ *
+ * @param psSlotInfo	Slot info
+ * @param FileType 		File type
+ * @param Key 			Key to write
+ * @param pValue 		Value to write
+ * @param pResp 		-presp
+ * @param LenResp 		-lenresp
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, E_ACCOUNTKEYS Key, const char *pValue, char *pResp, size_t LenResp)
 {
 	FILE *pFile = 0;
@@ -980,6 +1123,20 @@ int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, E_ACCOUNTKEY
 	return OK;
 }
 
+/**
+ * @brief Reads a key from a file
+ *
+ * @param pUsername	User name of the client
+ * @param FileType	File type
+ * @param Key		Key to read
+ * @param pKey		Pointer to key buffer
+ * @param LenKey	Length of key buffer
+ * @param pResp		-presp
+ * @param LenResp	-lenresp
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, E_ACCOUNTKEYS Key, char *pKey, size_t LenKey, char *pResp, size_t LenResp)
 {
 	FILE *pFile = 0;
@@ -1055,6 +1212,17 @@ int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, E_ACCOUNTKEYS 
 	return ERROR;
 }
 
+/**
+ * @brief Removes a file
+ *
+ * @param psSlotInfo	Slot info
+ * @param FileType 		File type
+ * @param pResp 		-presp
+ * @param LenResp 		-lenresp
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pResp, size_t LenResp)
 {
 	int retval = 0;
@@ -1077,6 +1245,15 @@ int CServer::RemoveFile(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, char *pRes
 	return OK;
 }
 
+/**
+ * @brief Bans an IP address for a given duration
+ *
+ * @param IP 		IP to ban
+ * @param Duration 	Duration to ban the IP for
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::BanIP(in_addr_t IP, time_t Duration)
 {
 	int banSlotCount = 0;
@@ -1106,6 +1283,15 @@ int CServer::BanIP(in_addr_t IP, time_t Duration)
 	return OK;
 }
 
+/**
+ * @brief Checks whether an IP is banned
+ *
+ * @param psSlotInfo	Slot info
+ * @param psTime 		Pointer to ban time left
+ *
+ * @return true
+ * @return false
+ */
 bool CServer::CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime)
 {
 	time_t currentTime = time(0);
@@ -1125,6 +1311,11 @@ bool CServer::CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime)
 	return false;
 }
 
+/**
+ * @brief Cleans an old client session
+ *
+ * @param psSlotInfo Slot info
+ */
 void CServer::CleanOldSession(S_SLOTINFO *psSlotInfo)
 {
 	// reset slot and close socket to free fd
@@ -1137,12 +1328,22 @@ void CServer::CleanOldSession(S_SLOTINFO *psSlotInfo)
 	CCore::DetachThreadSafely(&psSlotInfo->thrClientConnection); // do not check return value, the thread could have been cancelled by itself from disconnecting client or banning
 }
 
+/**
+ * @brief Closes a client socket and resets the corresponding slot
+ *
+ * @param psSlotInfo Slot info
+ */
 void CServer::CloseClientSocket(S_SLOTINFO *psSlotInfo)
 {
 	ResetSlot(psSlotInfo);
 	close(psSlotInfo->fdSocket);
 }
 
+/**
+ * @brief Resets the data of a given slot
+ *
+ * @param psSlotInfo Slot info
+ */
 void CServer::ResetSlot(S_SLOTINFO *psSlotInfo)
 {
 	memset(psSlotInfo->aUsername, 0, CSERVER_MAX_LEN_CREDENTIALS + 1);
@@ -1152,6 +1353,16 @@ void CServer::ResetSlot(S_SLOTINFO *psSlotInfo)
 	psSlotInfo->banned = false;
 }
 
+/**
+ * @brief 	Adds an IP to the list of suspicious IPs
+ * 			(too many failed logins with a pattern that only people
+ * 			who are trying to circumvent the ban system would use)
+ *
+ * @param IP IP to add to the list
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::AddSuspiciousIP(in_addr_t IP)
 {
 	int knownSlotIndex = -1;
@@ -1202,6 +1413,11 @@ int CServer::AddSuspiciousIP(in_addr_t IP)
 	return OK;
 }
 
+/**
+ * @brief Removes an IP from the list of suspicious IPs
+ *
+ * @param IP IP to remove
+ */
 void CServer::RemoveSuspiciousIP(in_addr_t IP)
 {
 	int amtSlots = ARRAYSIZE(m_aSuspiciousIPs);
@@ -1220,6 +1436,13 @@ void CServer::RemoveSuspiciousIP(in_addr_t IP)
 	}
 }
 
+/**
+ * @brief Gets the amount of suspicious attempts of a given IP
+ *
+ * @param IP IP to evaluate
+ *
+ * @return Amount of attempts
+ */
 int CServer::GetSuspiciousAttempts(in_addr_t IP)
 {
 	int attempts = 0;
@@ -1237,6 +1460,13 @@ int CServer::GetSuspiciousAttempts(in_addr_t IP)
 	return attempts;
 }
 
+/**
+ * @brief Helper function for returning an IP struct for a given IP
+ *
+ * @param IP IP to pack into struct
+ *
+ * @return Struct with IP
+ */
 struct in_addr CServer::GetIPStruct(in_addr_t IP)
 {
 	struct in_addr sInAddr = {0};
@@ -1246,6 +1476,16 @@ struct in_addr CServer::GetIPStruct(in_addr_t IP)
 	return sInAddr;
 }
 
+/**
+ * @brief Client command for outputting the help such as usable commands
+ *
+ * @param psSlotInfo	Slot info
+ * @param pResp 		-presp
+ * @param LenResp 		-lenresp
+ * @param pBufTemp 		-pbuftemp
+ * @param LenBufTemp 	-lbuftemp
+ *
+ */
 void CServer::ComHelp(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp)
 {
 	strncat(pResp, "****** Help ******\n" CSERVER_RESPONSE_PREFIX "All commands are case insensitive.\n", LenResp);

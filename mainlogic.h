@@ -1,3 +1,12 @@
+/**
+ * @file mainlogic.h
+ * @author KittenpawFromsoftfur (finbox.entertainment@gmail.com)
+ * @brief Main logic of the program, starts all threads, handles keyboard control and handles application exit
+ * @version 1.0
+ * @date 2023-08-18
+ *
+ * @copyright Copyright (c) 2023
+ */
 #pragma once
 
 #include <thread>
