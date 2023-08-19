@@ -1975,7 +1975,7 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 }
 
 /**
- * @brief Client command for deleting the log, account, defines or all of these files
+ * @brief Client command for deleting the log, defines, account or all of these files
  *
  * @param psSlotInfo	Slot info
  * @param pResp			Response buffer
