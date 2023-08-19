@@ -534,8 +534,8 @@ int CServer::ParseMessage(S_SLOTINFO *psSlotInfo, const char *pMsg, char *pResp,
  *
  * @param psSlotInfo	Slot info
  * @param aaToken		Array of tokens to be evaluated
- * @param pResp			-presp
- * @param LenResp		-lenresp
+ * @param pResp			Response buffer
+ * @param LenResp		Length of response buffer
  * @param pMsgFull		Full message which has not been tokenized
  */
 void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TOKENS][CSERVER_MAX_LEN_TOKEN], char *pResp, size_t LenResp, const char *pMsgFull)
@@ -657,7 +657,7 @@ void CServer::EvaluateTokens(S_SLOTINFO *psSlotInfo, char aaToken[CSERVER_MAX_TO
  * @brief Checks whether a command is executable
  *
  * @param psSlotInfo	Slot info
- * @param Flags 		Flags to evaluate
+ * @param Flags 		Command flags to evaluate
  *
  * @return true
  * @return false
@@ -692,7 +692,7 @@ bool CServer::IsCommandExecutable(S_SLOTINFO *psSlotInfo, int Flags)
  * @brief Checks whether a command is visible for the client
  *
  * @param psSlotInfo 	Slot info
- * @param Flags 		Flags to evaluate
+ * @param Flags 		Command flags to evaluate
  *
  * @return true
  * @return false
@@ -724,7 +724,7 @@ bool CServer::IsCommandVisible(S_SLOTINFO *psSlotInfo, int Flags)
 }
 
 /**
- * @brief Resets all hardware
+ * @brief Resets all hardware to the off-state
  *
  * @return OK
  * @return ERROR
@@ -791,15 +791,15 @@ void CServer::GetFilepath(E_FILETYPES FileType, const char *pUsername, bool File
 }
 
 /**
- * @brief Performs an account action
+ * @brief Performs an account action such as registering, logging in and logging out
  *
  * @param AccountAction 	Account action to perform
  * @param psSlotInfo 		Slot info
  * @param pUsername 		User name of the client
  * @param pPassword 		Password of the client
  * @param pWrongCredentials Pointer to buffer for determining whether wrong credentials have been entered by the client
- * @param pResp 			-presp
- * @param LenResp 			-lenresp
+ * @param pResp 			Response buffer
+ * @param LenResp 			Length of response buffer
  *
  * @return OK
  * @return ERROR
@@ -985,8 +985,8 @@ int CServer::AccountAction(E_ACCOUNTACTIONS AccountAction, S_SLOTINFO *psSlotInf
  *
  * @param FileType 	File type
  * @param pUsername	User name of the client
- * @param pResp 	-presp
- * @param LenResp 	-lenresp
+ * @param pResp 	Response buffer
+ * @param LenResp 	Length of response buffer
  *
  * @return OK
  * @return ERROR
@@ -1035,8 +1035,8 @@ int CServer::CreateDefinesFile(E_FILETYPES FileType, const char *pUsername, char
  * @param FileType 		File type
  * @param Key 			Key to write
  * @param pValue 		Value to write
- * @param pResp 		-presp
- * @param LenResp 		-lenresp
+ * @param pResp 		Response buffer
+ * @param LenResp 		Length of response buffer
  *
  * @return OK
  * @return ERROR
@@ -1131,8 +1131,8 @@ int CServer::WriteKey(S_SLOTINFO *psSlotInfo, E_FILETYPES FileType, E_ACCOUNTKEY
  * @param Key		Key to read
  * @param pKey		Pointer to key buffer
  * @param LenKey	Length of key buffer
- * @param pResp		-presp
- * @param LenResp	-lenresp
+ * @param pResp		Response buffer
+ * @param LenResp	Length of response buffer
  *
  * @return OK
  * @return ERROR
@@ -1217,8 +1217,8 @@ int CServer::ReadKey(const char *pUsername, E_FILETYPES FileType, E_ACCOUNTKEYS 
  *
  * @param psSlotInfo	Slot info
  * @param FileType 		File type
- * @param pResp 		-presp
- * @param LenResp 		-lenresp
+ * @param pResp 		Response buffer
+ * @param LenResp 		Length of response buffer
  *
  * @return OK
  * @return ERROR
@@ -1312,7 +1312,7 @@ bool CServer::CheckIPBanned(S_SLOTINFO *psSlotInfo, struct tm *psTime)
 }
 
 /**
- * @brief Cleans an old client session
+ * @brief Cleans an old client session by closing the client's socket, resetting the corresponding slot and detaching the client thread
  *
  * @param psSlotInfo Slot info
  */
@@ -1477,14 +1477,13 @@ struct in_addr CServer::GetIPStruct(in_addr_t IP)
 }
 
 /**
- * @brief Client command for outputting the help such as usable commands
+ * @brief Client command for outputting the help e.g. listing usable commands
  *
  * @param psSlotInfo	Slot info
- * @param pResp 		-presp
- * @param LenResp 		-lenresp
- * @param pBufTemp 		-pbuftemp
- * @param LenBufTemp 	-lbuftemp
- *
+ * @param pResp 		Response buffer
+ * @param LenResp 		Length of response buffer
+ * @param pBufTemp 		Temporary buffer for concatenating to the response buffer
+ * @param LenBufTemp 	Length of the temporary buffer
  */
 void CServer::ComHelp(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp)
 {
@@ -1536,6 +1535,20 @@ void CServer::ComHelp(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char 
 	strncat(pResp, CSERVER_RESPONSE_PREFIX "******************", LenResp);
 }
 
+/**
+ * @brief Client command for activating the client's account. A secret phrase has to be entered correctly
+ *
+ * @param psSlotInfo	Slot info
+ * @param pResp 		Response buffer
+ * @param LenResp 		Length of response buffer
+ * @param pPhrase1 		First phrase
+ * @param pPhrase2 		Second phrase
+ * @param pPhrase3 		Third phrase
+ * @param LenPhrases 	Length of phrase buffer
+ *
+ * @return OK		if the phrase was entered correctly
+ * @return ERROR	if the phrase was entered incorrectly
+ */
 int CServer::ComActivateAccount(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, const char *pPhrase1, const char *pPhrase2, const char *pPhrase3, size_t LenPhrases)
 {
 	int retval = 0;
@@ -1565,6 +1578,20 @@ int CServer::ComActivateAccount(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenR
 	return OK;
 }
 
+/**
+ * @brief Client command for registering an account
+ *
+ * @param psSlotInfo	Slot info
+ * @param pResp 		Response buffer
+ * @param LenResp 		Length of response buffer
+ * @param pBufTemp 		Temporary buffer for concatenating to the response buffer
+ * @param LenBufTemp 	Length of the temporary buffer
+ * @param pUsername 	User name of the client
+ * @param pPassword 	Password of the client
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::ComRegister(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pUsername, const char *pPassword)
 {
 	int retval = 0;
@@ -1586,6 +1613,20 @@ int CServer::ComRegister(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 	return OK;
 }
 
+/**
+ * @brief Client command for logging in with an account
+ *
+ * @param psSlotInfo	Slot info
+ * @param pResp 		Response buffer
+ * @param LenResp 		Length of response buffer
+ * @param pBufTemp 		Temporary buffer for concatenating to the response buffer
+ * @param LenBufTemp 	Length of the temporary buffer
+ * @param pUsername 	User name of the client
+ * @param pPassword 	Password of the client
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::ComLogin(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pUsername, const char *pPassword)
 {
 	int retval = 0;
@@ -1666,6 +1707,18 @@ int CServer::ComLogin(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char 
 	return OK;
 }
 
+/**
+ * @brief Client command for logging out with a currently logged in account
+ *
+ * @param psSlotInfo	Slot info
+ * @param pResp 		Response buffer
+ * @param LenResp 		Length of response buffer
+ * @param pBufTemp 		Temporary buffer for concatenating to the response buffer
+ * @param LenBufTemp 	Length of the temporary buffer
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::ComLogout(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp)
 {
 	int retval = 0;
@@ -1687,6 +1740,23 @@ int CServer::ComLogout(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 	return OK;
 }
 
+/**
+ * @brief Client command for defining, setting and clearing IOs
+ *
+ * @param psSlotInfo	Slot info
+ * @param pResp			Response buffer
+ * @param LenResp		Length of response buffer
+ * @param pBufTemp		Temporary buffer for concatenating to the response buffer
+ * @param LenBufTemp	Length of the temporary buffer
+ * @param IOAction		Action to take
+ * @param pIOType		Type of the IO
+ * @param pIOID			ID of the IO, can be number or defined name
+ * @param pIOParam		Additional parameter, can be IO name or IO state
+ * @param LenIOParams	Length of the IO parameters
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, E_IOACTIONS IOAction, const char *pIOType, const char *pIOID, const char *pIOParam, size_t LenIOParams)
 {
 	int retval = 0;
@@ -1904,6 +1974,20 @@ int CServer::ComIOAction(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, ch
 	return OK;
 }
 
+/**
+ * @brief Client command for deleting the log, account, defines or all of these files
+ *
+ * @param psSlotInfo	Slot info
+ * @param pResp			Response buffer
+ * @param LenResp		Length of response buffer
+ * @param pBufTemp		Temporary buffer for concatenating to the response buffer
+ * @param LenBufTemp	Length of the temporary buffer
+ * @param pTarget		Deletion target
+ * @param LenTarget		Length of the deletion target string
+ *
+ * @return OK
+ * @return ERROR
+ */
 int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pTarget, size_t LenTarget)
 {
 	int retval = 0;
@@ -2106,12 +2190,29 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 	return OK;
 }
 
+/**
+ * @brief Client command for shutting down the server
+ *
+ * @param psSlotInfo Slot info
+ */
 void CServer::ComShutdown(S_SLOTINFO *psSlotInfo)
 {
 	m_pMainlogic->m_Log.Log("Slot[%d] Has shut down the server", psSlotInfo->slotIndex);
 	m_pMainlogic->RequestApplicationExit();
 }
 
+/**
+ * @brief Client command for running a system command on the machine
+ *
+ * @param psSlotInfo	Slot info
+ * @param pResp 		Response buffer
+ * @param LenResp 		Length of response buffer
+ * @param pBufTemp 		Temporary buffer for concatenating to the response buffer
+ * @param LenBufTemp 	Length of the temporary buffer
+ * @param pMsgFull 		Full message buffer containing the system command
+ *
+ * @return Exit code of the system commmand
+ */
 int CServer::ComRun(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp, const char *pMsgFull)
 {
 	int retval = 0;
@@ -2136,6 +2237,14 @@ int CServer::ComRun(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char *p
 	return retval;
 }
 
+/**
+ * @brief Client command for returning (an funny) echo
+ *
+ * @param pResp			Response buffer
+ * @param LenResp 		Length of response buffer
+ * @param pBufTemp 		Temporary buffer for concatenating to the response buffer
+ * @param LenBufTemp	Length of the temporary buffer
+ */
 void CServer::ComEcho(char *pResp, size_t LenResp, char *pBufTemp, size_t LenBufTemp)
 {
 	int randNr = rand() % ARRAYSIZE(m_aaEchoes);
@@ -2145,6 +2254,11 @@ void CServer::ComEcho(char *pResp, size_t LenResp, char *pBufTemp, size_t LenBuf
 	m_pMainlogic->m_Log.Log("Echoed '%s'", pResp);
 }
 
+/**
+ * @brief Client command to make the server close the connection
+ *
+ * @param psSlotInfo Slot info
+ */
 void CServer::ComExit(S_SLOTINFO *psSlotInfo)
 {
 	psSlotInfo->requestedDisconnect = true;

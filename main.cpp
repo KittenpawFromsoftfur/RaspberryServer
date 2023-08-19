@@ -15,17 +15,6 @@
 #include "mainlogic.h"
 
 /* TODO
-	Now
-		Documentation please!
-		Laststop: and finish server.cpp
-		-presp
-		-lenresp
-		-pbuftemp
-		-lbuftemp
-
-	GENERAL
-		update readme
-
 	INTERFACE
 		Make it so you can connect with a browser and click on buttons instead of sending commands
 
