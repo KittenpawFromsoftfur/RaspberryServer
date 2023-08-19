@@ -2001,27 +2001,33 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 	bool preventDeletingFilesDefine = false;
 	bool preventLogOut = false;
 	bool anyActionFailed = false;
+	int slotIndex = 0;
 	char aAccountName[ARRAYSIZE(S_SLOTINFO::aUsername)] = {0};
 
 	/* NOTE
 		When an error occurs, no return is performed so the max amount of files can be deleted.
+		Do not use psSlotInfo, use slotIndex and aAccountName instead
 	*/
+
+	// copy slot info for logging after deleting account info
+	slotIndex = psSlotInfo->slotIndex;
+	strncpy(aAccountName, psSlotInfo->aUsername, ARRAYSIZE(aAccountName));
 
 	// prepare deleting files
 	// log
 	if (CCore::StringCompareNocase(pTarget, "log", LenTarget) == 0)
 	{
 		deleteFileLog = true;
+	} // defines
+	else if (CCore::StringCompareNocase(pTarget, "defines", LenTarget) == 0)
+	{
+		clearFileDefines = true;
 	} // account
 	else if (CCore::StringCompareNocase(pTarget, "account", LenTarget) == 0)
 	{
 		deleteFileAccount = true;
 		deleteFileDefines = true;
 		logOut = true;
-	} // defines
-	else if (CCore::StringCompareNocase(pTarget, "defines", LenTarget) == 0)
-	{
-		clearFileDefines = true;
 	} // all
 	else if (CCore::StringCompareNocase(pTarget, "all", LenTarget) == 0)
 	{
@@ -2032,38 +2038,43 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 	}
 	else // invalid category
 	{
-		m_pMainlogic->m_Log.Log("Slot[%d] Error, delete target must be log/account/defines/all", psSlotInfo->slotIndex);
-		snprintf(pBufTemp, LenBufTemp, "Error, delete target must be log/account/defines/all");
+		m_pMainlogic->m_Log.Log("Slot[%d] Error, delete target must be log/defines/account/all", slotIndex);
+		snprintf(pBufTemp, LenBufTemp, "Error, delete target must be log/defines/account/all");
 		strncat(pResp, pBufTemp, LenResp);
 		return ERROR;
 	}
-
-	// copy account name for logging after deleting account info
-	strncpy(aAccountName, psSlotInfo->aUsername, ARRAYSIZE(aAccountName));
 
 	// perform actions
 	// clear defines
 	if (clearFileDefines)
 	{
 		// GPIO
-		retval = CreateDefinesFile(FILETYPE_DEFINES_GPIO, psSlotInfo->aUsername, pResp, LenResp);
+		retval = CreateDefinesFile(FILETYPE_DEFINES_GPIO, aAccountName, pResp, LenResp);
 		if (retval != OK)
 		{
 			anyActionFailed = true;
-			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' unable to clear defines GPIO", psSlotInfo->slotIndex, psSlotInfo->aUsername);
+			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' unable to clear defines GPIO", slotIndex, aAccountName);
+		}
+		else
+		{
+			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' cleared defines GPIO", slotIndex, aAccountName);
+			snprintf(pBufTemp, LenBufTemp, "Cleared defines GPIO; ");
+			strncat(pResp, pBufTemp, LenResp);
 		}
 
 		// MOSFET
-		retval = CreateDefinesFile(FILETYPE_DEFINES_MOSFET, psSlotInfo->aUsername, pResp, LenResp);
+		retval = CreateDefinesFile(FILETYPE_DEFINES_MOSFET, aAccountName, pResp, LenResp);
 		if (retval != OK)
 		{
 			anyActionFailed = true;
-			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' unable to clear defines MOSFET", psSlotInfo->slotIndex, psSlotInfo->aUsername);
+			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' unable to clear defines MOSFET", slotIndex, aAccountName);
 		}
-
-		m_pMainlogic->m_Log.Log("Slot[%d] User '%s' defines were cleared", psSlotInfo->slotIndex, psSlotInfo->aUsername);
-		snprintf(pBufTemp, LenBufTemp, "Deleted defines");
-		strncat(pResp, pBufTemp, LenResp);
+		else
+		{
+			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' cleared defines MOSFET", slotIndex, aAccountName);
+			snprintf(pBufTemp, LenBufTemp, "Cleared defines MOSFET; ");
+			strncat(pResp, pBufTemp, LenResp);
+		}
 	}
 
 	// clear directories
@@ -2073,8 +2084,8 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 		if (strstr(CSERVER_FOLDERPATH_ACCOUNTS, FILEPATH_BASE) == 0 || strstr(CSERVER_FOLDERPATH_DEFINES_GPIO, FILEPATH_BASE) == 0 || strstr(CSERVER_FOLDERPATH_DEFINES_MOSFET, FILEPATH_BASE) == 0)
 		{
 			anyActionFailed = true;
-			m_pMainlogic->m_Log.Log("Slot[%d] Danger! Folder path for accounts or defines are not inside the base folder path '%s', important files could be deleted! Clearing directories has been cancelled!", psSlotInfo->slotIndex, FILEPATH_BASE);
-			snprintf(pBufTemp, LenBufTemp, "Unable to delete all files", CSERVER_FOLDERPATH_ACCOUNTS);
+			m_pMainlogic->m_Log.Log("Slot[%d] Danger! Folder path for accounts or defines are not inside the base folder path '%s', important files could be deleted! Clearing directories has been cancelled!", slotIndex, FILEPATH_BASE);
+			snprintf(pBufTemp, LenBufTemp, "Unable to delete all files; ", CSERVER_FOLDERPATH_ACCOUNTS);
 			strncat(pResp, pBufTemp, LenResp);
 		}
 
@@ -2085,8 +2096,14 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 			if (retval != OK)
 			{
 				anyActionFailed = true;
-				m_pMainlogic->m_Log.Log("Slot[%d] Failed to remove files in directory '%s'", psSlotInfo->slotIndex, CSERVER_FOLDERPATH_ACCOUNTS);
-				snprintf(pBufTemp, LenBufTemp, "Failed to remove files in directory '%s'", CSERVER_FOLDERPATH_ACCOUNTS);
+				m_pMainlogic->m_Log.Log("Slot[%d] Failed to clear account directory '%s'", slotIndex, CSERVER_FOLDERPATH_ACCOUNTS);
+				snprintf(pBufTemp, LenBufTemp, "Failed to clear account directory; ");
+				strncat(pResp, pBufTemp, LenResp);
+			}
+			else
+			{
+				m_pMainlogic->m_Log.Log("Slot[%d] Cleared account directory '%s'", slotIndex, CSERVER_FOLDERPATH_ACCOUNTS);
+				snprintf(pBufTemp, LenBufTemp, "Cleared account directory; ");
 				strncat(pResp, pBufTemp, LenResp);
 			}
 		}
@@ -2099,8 +2116,14 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 			if (retval != OK)
 			{
 				anyActionFailed = true;
-				m_pMainlogic->m_Log.Log("Slot[%d] Failed to remove files in directory '%s'", psSlotInfo->slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
-				snprintf(pBufTemp, LenBufTemp, "Failed to remove files in directory '%s'", CSERVER_FOLDERPATH_DEFINES_GPIO);
+				m_pMainlogic->m_Log.Log("Slot[%d] Failed to clear defines GPIO directory '%s'", slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
+				snprintf(pBufTemp, LenBufTemp, "Failed to clear defines GPIO directory; ");
+				strncat(pResp, pBufTemp, LenResp);
+			}
+			else
+			{
+				m_pMainlogic->m_Log.Log("Slot[%d] Cleared defines GPIO directory '%s'", slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
+				snprintf(pBufTemp, LenBufTemp, "Cleared defines GPIO directory; ");
 				strncat(pResp, pBufTemp, LenResp);
 			}
 
@@ -2109,8 +2132,14 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 			if (retval != OK)
 			{
 				anyActionFailed = true;
-				m_pMainlogic->m_Log.Log("Slot[%d] Failed to remove files in directory '%s'", psSlotInfo->slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
-				snprintf(pBufTemp, LenBufTemp, "Failed to remove files in directory '%s'", CSERVER_FOLDERPATH_DEFINES_GPIO);
+				m_pMainlogic->m_Log.Log("Slot[%d] Failed to clear defines MOSFET directory '%s'", slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
+				snprintf(pBufTemp, LenBufTemp, "Failed to clear defines MOSFET directory; ");
+				strncat(pResp, pBufTemp, LenResp);
+			}
+			else
+			{
+				m_pMainlogic->m_Log.Log("Slot[%d] Cleared defines MOSFET directory '%s'", slotIndex, CSERVER_FOLDERPATH_DEFINES_GPIO);
+				snprintf(pBufTemp, LenBufTemp, "Cleared defines MOSFET directory; ");
 				strncat(pResp, pBufTemp, LenResp);
 			}
 		}
@@ -2123,12 +2152,45 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 		if (retval != OK)
 		{
 			anyActionFailed = true;
-			m_pMainlogic->m_Log.Log("%s: Failed to remove log file", __FUNCTION__);
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to delete log", slotIndex);
 		}
 		else
 		{
-			strncat(pResp, "Deleted log file", LenResp);
-			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' deleted log", psSlotInfo->slotIndex, psSlotInfo->aUsername);
+			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' deleted log", slotIndex, aAccountName);
+			snprintf(pBufTemp, LenBufTemp, "Deleted log; ");
+			strncat(pResp, pBufTemp, LenResp);
+		}
+	}
+
+	// delete defines
+	if (deleteFileDefines && !preventDeletingFilesDefine)
+	{
+		// GPIO
+		retval = RemoveFile(psSlotInfo, FILETYPE_DEFINES_GPIO, pResp, LenResp);
+		if (retval != OK)
+		{
+			anyActionFailed = true;
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to delete defines GPIO", slotIndex);
+		}
+		else
+		{
+			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' deleted defines GPIO", slotIndex, aAccountName);
+			snprintf(pBufTemp, LenBufTemp, "Deleted defines GPIO; ");
+			strncat(pResp, pBufTemp, LenResp);
+		}
+
+		// MOSFET
+		retval = RemoveFile(psSlotInfo, FILETYPE_DEFINES_MOSFET, pResp, LenResp);
+		if (retval != OK)
+		{
+			anyActionFailed = true;
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to delete defines MOSFET", slotIndex);
+		}
+		else
+		{
+			m_pMainlogic->m_Log.Log("Slot[%d] User '%s' deleted defines MOSFET", slotIndex, aAccountName);
+			snprintf(pBufTemp, LenBufTemp, "Deleted defines MOSFET; ");
+			strncat(pResp, pBufTemp, LenResp);
 		}
 	}
 
@@ -2142,27 +2204,13 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 			anyActionFailed = true;
 			preventLogOut = true;			   // dont log out if the account still exists
 			preventDeletingFilesDefine = true; // because an account needs defines files in order to function properly
-			m_pMainlogic->m_Log.Log("%s: Failed to delete account file", __FUNCTION__);
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to delete account", slotIndex);
 		}
-	}
-
-	// delete defines
-	if (deleteFileDefines && !preventDeletingFilesDefine)
-	{
-		// GPIO
-		retval = RemoveFile(psSlotInfo, FILETYPE_DEFINES_GPIO, pResp, LenResp);
-		if (retval != OK)
+		else
 		{
-			anyActionFailed = true;
-			m_pMainlogic->m_Log.Log("%s: Failed to delete defines GPIO file", __FUNCTION__);
-		}
-
-		// MOSFET
-		retval = RemoveFile(psSlotInfo, FILETYPE_DEFINES_MOSFET, pResp, LenResp);
-		if (retval != OK)
-		{
-			anyActionFailed = true;
-			m_pMainlogic->m_Log.Log("%s: Failed to delete defines MOSFET file", __FUNCTION__);
+			m_pMainlogic->m_Log.Log("Slot[%d] Deleted account '%s'", slotIndex, aAccountName);
+			snprintf(pBufTemp, LenBufTemp, "Deleted account '%s'; ", aAccountName);
+			strncat(pResp, pBufTemp, LenResp);
 		}
 	}
 
@@ -2174,12 +2222,12 @@ int CServer::ComDelete(S_SLOTINFO *psSlotInfo, char *pResp, size_t LenResp, char
 		if (retval != OK)
 		{
 			anyActionFailed = true;
-			m_pMainlogic->m_Log.Log("Slot[%d] Failed to log out with account '%s'", psSlotInfo->slotIndex, psSlotInfo->aUsername);
+			m_pMainlogic->m_Log.Log("Slot[%d] Failed to log out with account '%s'", slotIndex, aAccountName);
 		}
 		else
 		{
-			m_pMainlogic->m_Log.Log("Slot[%d] Deleted account '%s' and logged out", psSlotInfo->slotIndex, aAccountName);
-			snprintf(pBufTemp, LenBufTemp, "Deleted account '%s' and logged out", aAccountName);
+			m_pMainlogic->m_Log.Log("Slot[%d] Logged out", slotIndex);
+			snprintf(pBufTemp, LenBufTemp, "Logged out; ");
 			strncat(pResp, pBufTemp, LenResp);
 		}
 	}
